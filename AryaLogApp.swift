@@ -1,0 +1,136 @@
+//
+//  AryaLogApp.swift
+//  AryaLog
+//
+//  iOS Childcare Record-Keeping App
+//
+
+import SwiftUI
+import CoreData
+
+@main
+struct AryaLogApp: App {
+    let persistenceController = PersistenceController.shared
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+        }
+    }
+}
+
+struct ContentView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @AppStorage("hasCompletedSetup") private var hasCompletedSetup = false
+    @AppStorage("currentCaregiverID") private var currentCaregiverID: String = ""
+
+    var body: some View {
+        if hasCompletedSetup {
+            MainTabView()
+        } else {
+            SetupView(hasCompletedSetup: $hasCompletedSetup, currentCaregiverID: $currentCaregiverID)
+        }
+    }
+}
+
+struct SetupView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @Binding var hasCompletedSetup: Bool
+    @Binding var currentCaregiverID: String
+    @State private var caregiverName = ""
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(.pink)
+
+                Text("Welcome to AryaLog")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+
+                Text("Track your baby's care activities")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your Name")
+                        .font(.headline)
+
+                    TextField("Enter your name", text: $caregiverName)
+                        .textFieldStyle(.roundedBorder)
+                        .textContentType(.name)
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 32)
+
+                Spacer()
+
+                Button(action: createCaregiver) {
+                    Text("Get Started")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(caregiverName.isEmpty ? Color.gray : Color.pink)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(caregiverName.isEmpty)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 32)
+            }
+        }
+    }
+
+    private func createCaregiver() {
+        let caregiver = Caregiver(context: viewContext)
+        caregiver.id = UUID()
+        caregiver.name = caregiverName.trimmingCharacters(in: .whitespacesAndNewlines)
+        caregiver.isCurrentUser = true
+        caregiver.createdAt = Date()
+
+        do {
+            try viewContext.save()
+            currentCaregiverID = caregiver.id?.uuidString ?? ""
+            hasCompletedSetup = true
+        } catch {
+            print("Failed to save caregiver: \(error)")
+        }
+    }
+}
+
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            HomeView()
+                .tabItem {
+                    Label("Home", systemImage: "house.fill")
+                }
+
+            TimelineView()
+                .tabItem {
+                    Label("Timeline", systemImage: "list.bullet")
+                }
+
+            StatsView()
+                .tabItem {
+                    Label("Stats", systemImage: "chart.bar.fill")
+                }
+
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
+        }
+        .tint(.pink)
+    }
+}
+
+#Preview {
+    ContentView()
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+}
