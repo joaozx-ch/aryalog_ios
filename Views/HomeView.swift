@@ -13,6 +13,7 @@ struct HomeView: View {
     @StateObject private var viewModel: HomeViewModel
     @State private var showingBreastfeedingForm = false
     @State private var showingFormulaForm = false
+    @State private var showingSimpleEventType: ActivityType?
 
     init() {
         // Initialize with a temporary context, will be replaced in onAppear
@@ -48,6 +49,11 @@ struct HomeView: View {
                     viewModel.refresh()
                 }
             }
+            .sheet(item: $showingSimpleEventType) { type in
+                SimpleEventFormView(activityType: type) {
+                    viewModel.refresh()
+                }
+            }
             .onAppear {
                 viewModel.refresh()
             }
@@ -60,12 +66,12 @@ struct HomeView: View {
                 Text("Today's Summary")
                     .font(.headline)
                 Spacer()
-                Text(viewModel.timeSinceLastFeeding)
+                Text(viewModel.timeSinceLastLog)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
                 StatBox(
                     icon: "drop.fill",
                     value: "\(viewModel.todayBreastfeedingMinutes)m",
@@ -78,6 +84,20 @@ struct HomeView: View {
                     value: "\(viewModel.todayFormulaML) mL",
                     label: "Formula",
                     color: .blue
+                )
+
+                StatBox(
+                    icon: "moon.fill",
+                    value: "\(viewModel.todaySleepCount)",
+                    label: "Sleeps",
+                    color: .indigo
+                )
+
+                StatBox(
+                    icon: "drop.triangle.fill",
+                    value: "\(viewModel.todayDiaperCount)",
+                    label: "Diapers",
+                    color: .yellow
                 )
             }
         }
@@ -92,9 +112,9 @@ struct HomeView: View {
             Text("Quick Add")
                 .font(.headline)
 
-            HStack(spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
                 QuickAddButton(
-                    title: "Breastfeeding",
+                    title: "Breast",
                     icon: "drop.fill",
                     color: .pink
                 ) {
@@ -107,6 +127,38 @@ struct HomeView: View {
                     color: .blue
                 ) {
                     showingFormulaForm = true
+                }
+
+                QuickAddButton(
+                    title: "Sleep",
+                    icon: "moon.fill",
+                    color: .indigo
+                ) {
+                    showingSimpleEventType = .sleep
+                }
+
+                QuickAddButton(
+                    title: "Wake Up",
+                    icon: "sun.max.fill",
+                    color: .orange
+                ) {
+                    showingSimpleEventType = .wakeUp
+                }
+
+                QuickAddButton(
+                    title: "Pee",
+                    icon: "drop.triangle.fill",
+                    color: .yellow
+                ) {
+                    showingSimpleEventType = .pee
+                }
+
+                QuickAddButton(
+                    title: "Poop",
+                    icon: "leaf.fill",
+                    color: .brown
+                ) {
+                    showingSimpleEventType = .poop
                 }
             }
         }
@@ -128,7 +180,7 @@ struct HomeView: View {
             if viewModel.recentLogs.isEmpty {
                 EmptyStateView(
                     icon: "tray",
-                    message: "No feeding logs yet",
+                    message: "No logs yet",
                     submessage: "Tap a button above to add your first entry"
                 )
             } else {
@@ -174,18 +226,18 @@ struct QuickAddButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.largeTitle)
+                    .font(.title2)
                 Text(title)
-                    .font(.subheadline)
+                    .font(.caption)
                     .fontWeight(.medium)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
+            .padding(.vertical, 16)
             .foregroundStyle(.white)
             .background(color)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 }

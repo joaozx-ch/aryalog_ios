@@ -59,6 +59,14 @@ extension FeedingLog {
             return parts.isEmpty ? "No duration" : parts.joined(separator: ", ")
         case .formula:
             return formattedVolume
+        case .sleep:
+            return wrappedNotes.isEmpty ? "Fell asleep" : wrappedNotes
+        case .wakeUp:
+            return wrappedNotes.isEmpty ? "Woke up" : wrappedNotes
+        case .pee:
+            return wrappedNotes.isEmpty ? "Pee" : wrappedNotes
+        case .poop:
+            return wrappedNotes.isEmpty ? "Poop" : wrappedNotes
         }
     }
 
@@ -133,5 +141,10 @@ extension FeedingLog {
         return logs
             .filter { $0.wrappedActivityType == .formula }
             .reduce(0) { $0 + Int($1.volumeML) }
+    }
+
+    static func countForType(_ type: ActivityType, for date: Date, in context: NSManagedObjectContext) -> Int {
+        let logs = fetchForDate(date, in: context)
+        return logs.filter { $0.wrappedActivityType == type }.count
     }
 }

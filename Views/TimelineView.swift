@@ -14,28 +14,13 @@ struct TimelineView: View {
     @State private var selectedDate = Date()
     @State private var showingBreastfeedingForm = false
     @State private var showingFormulaForm = false
+    @State private var showingSimpleEventType: ActivityType?
     @State private var selectedLog: FeedingLog?
     @State private var showingEditSheet = false
-
-    private let axisX: CGFloat = 40
-    private let hourHeight: CGFloat = 80
 
     private var logsForDay: [FeedingLog] {
         FeedingLog.fetchForDate(selectedDate, in: viewContext)
             .sorted { ($0.startTime ?? .distantPast) < ($1.startTime ?? .distantPast) }
-    }
-
-    private var hourRange: ClosedRange<Int> {
-        let calendar = Calendar.current
-        let hours = logsForDay.map { calendar.component(.hour, from: $0.wrappedStartTime) }
-        guard let minH = hours.min(), let maxH = hours.max() else {
-            return 6...22
-        }
-        return max(minH - 1, 0)...min(maxH + 1, 23)
-    }
-
-    private var totalAxisHeight: CGFloat {
-        CGFloat(hourRange.count) * hourHeight
     }
 
     var body: some View {
@@ -47,7 +32,7 @@ struct TimelineView: View {
                 if logsForDay.isEmpty {
                     Spacer()
                     ContentUnavailableView(
-                        "No Feeding Logs",
+                        "No Logs",
                         systemImage: "list.bullet",
                         description: Text("No events on this day")
                     )
@@ -56,20 +41,25 @@ struct TimelineView: View {
                     // Day summary
                     daySummaryBar
 
-                    // Timeline axis
+                    // Timeline
                     ScrollView {
-                        ZStack(alignment: .topLeading) {
-                            // Vertical axis line
-                            axisLine
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(logsForDay.enumerated()), id: \.element.id) { index, log in
+                                // Time gap indicator between events
+                                if index > 0 {
+                                    timeGapView(from: logsForDay[index - 1], to: log)
+                                }
 
-                            // Hour markers
-                            hourMarkers
-
-                            // Event nodes
-                            eventNodes
+                                // Event row
+                                TimelineRow(log: log, isFirst: index == 0, isLast: index == logsForDay.count - 1) {
+                                    selectedLog = log
+                                    showingEditSheet = true
+                                } onDelete: {
+                                    deleteLog(log)
+                                }
+                            }
                         }
-                        .frame(width: nil, height: totalAxisHeight)
-                        .padding(.trailing, 16)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                     }
                 }
@@ -78,11 +68,29 @@ struct TimelineView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button(action: { showingBreastfeedingForm = true }) {
-                            Label("Breastfeeding", systemImage: "drop.fill")
+                        Section("Feeding") {
+                            Button(action: { showingBreastfeedingForm = true }) {
+                                Label("Breastfeeding", systemImage: "drop.fill")
+                            }
+                            Button(action: { showingFormulaForm = true }) {
+                                Label("Formula", systemImage: "cup.and.saucer.fill")
+                            }
                         }
-                        Button(action: { showingFormulaForm = true }) {
-                            Label("Formula", systemImage: "cup.and.saucer.fill")
+                        Section("Sleep") {
+                            Button(action: { showingSimpleEventType = .sleep }) {
+                                Label("Sleep", systemImage: "moon.fill")
+                            }
+                            Button(action: { showingSimpleEventType = .wakeUp }) {
+                                Label("Wake Up", systemImage: "sun.max.fill")
+                            }
+                        }
+                        Section("Diaper") {
+                            Button(action: { showingSimpleEventType = .pee }) {
+                                Label("Pee", systemImage: "drop.triangle.fill")
+                            }
+                            Button(action: { showingSimpleEventType = .poop }) {
+                                Label("Poop", systemImage: "leaf.fill")
+                            }
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -91,13 +99,18 @@ struct TimelineView: View {
             }
             .sheet(isPresented: $showingBreastfeedingForm) {
                 BreastfeedingFormView {
-                    // trigger refresh by toggling date
                     let d = selectedDate
                     selectedDate = d
                 }
             }
             .sheet(isPresented: $showingFormulaForm) {
                 FormulaFormView {
+                    let d = selectedDate
+                    selectedDate = d
+                }
+            }
+            .sheet(item: $showingSimpleEventType) { type in
+                SimpleEventFormView(activityType: type) {
                     let d = selectedDate
                     selectedDate = d
                 }
@@ -133,9 +146,11 @@ struct TimelineView: View {
         let formulaML = logsForDay
             .filter { $0.wrappedActivityType == .formula }
             .reduce(0) { $0 + Int($1.volumeML) }
+        let sleepCount = logsForDay.filter { $0.wrappedActivityType == .sleep }.count
+        let diaperCount = logsForDay.filter { $0.wrappedActivityType == .pee || $0.wrappedActivityType == .poop }.count
 
         return HStack(spacing: 12) {
-            Label("\(logsForDay.count) feedings", systemImage: "list.bullet")
+            Label("\(logsForDay.count) events", systemImage: "list.bullet")
             if bfMinutes > 0 {
                 Label("\(bfMinutes) min", systemImage: "drop.fill")
                     .foregroundStyle(.pink)
@@ -144,6 +159,14 @@ struct TimelineView: View {
                 Label("\(formulaML) mL", systemImage: "cup.and.saucer.fill")
                     .foregroundStyle(.blue)
             }
+            if sleepCount > 0 {
+                Label("\(sleepCount)", systemImage: "moon.fill")
+                    .foregroundStyle(.indigo)
+            }
+            if diaperCount > 0 {
+                Label("\(diaperCount)", systemImage: "drop.triangle.fill")
+                    .foregroundStyle(.yellow)
+            }
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -151,93 +174,49 @@ struct TimelineView: View {
         .padding(.bottom, 4)
     }
 
-    // MARK: - Axis
+    // MARK: - Time Gap
 
-    private var axisLine: some View {
-        Rectangle()
-            .fill(Color(.systemGray4))
-            .frame(width: 2, height: totalAxisHeight)
-            .offset(x: axisX - 1)
-    }
+    private func timeGapView(from prev: FeedingLog, to next: FeedingLog) -> some View {
+        let interval = next.wrappedStartTime.timeIntervalSince(prev.wrappedStartTime)
+        let minutes = Int(interval) / 60
 
-    private var hourMarkers: some View {
-        ForEach(Array(hourRange), id: \.self) { hour in
-            let y = yOffset(forHour: hour)
-            HStack(spacing: 0) {
-                Text(hourLabel(hour))
+        return HStack(spacing: 0) {
+            // Vertical line segment aligned with the timeline axis
+            Rectangle()
+                .fill(Color(.systemGray4))
+                .frame(width: 2)
+                .frame(maxHeight: .infinity)
+                .padding(.leading, 5)
+
+            if minutes >= 5 {
+                Text(formatGap(minutes))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-                    .frame(width: axisX - 8, alignment: .trailing)
-
-                // Tick mark
-                Rectangle()
-                    .fill(Color(.systemGray4))
-                    .frame(width: 8, height: 1)
+                    .padding(.leading, 16)
             }
-            .offset(y: y - 6) // center text on tick
+
+            Spacer()
         }
+        .frame(height: gapHeight(minutes: minutes))
     }
 
-    // MARK: - Events
+    private func gapHeight(minutes: Int) -> CGFloat {
+        if minutes < 5 { return 4 }
+        if minutes < 30 { return 20 }
+        if minutes < 60 { return 28 }
+        return 36
+    }
 
-    private var eventNodes: some View {
-        ForEach(logsForDay) { log in
-            let y = yPosition(for: log.wrappedStartTime)
-            let color = log.wrappedActivityType.color
-
-            HStack(spacing: 0) {
-                // Spacer to axis position
-                Spacer()
-                    .frame(width: axisX - 6)
-
-                // Dot on axis
-                Circle()
-                    .fill(color)
-                    .frame(width: 12, height: 12)
-                    .shadow(color: color.opacity(0.4), radius: 3, x: 0, y: 1)
-
-                // Connector line
-                Rectangle()
-                    .fill(color.opacity(0.4))
-                    .frame(width: 12, height: 2)
-
-                // Event card
-                TimelineEventCard(log: log)
-                    .onTapGesture {
-                        selectedLog = log
-                        showingEditSheet = true
-                    }
-                    .contextMenu {
-                        Button(role: .destructive) {
-                            deleteLog(log)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-            }
-            .offset(y: y - 6) // center dot vertically
+    private func formatGap(_ minutes: Int) -> String {
+        if minutes >= 60 {
+            let h = minutes / 60
+            let m = minutes % 60
+            return m > 0 ? "\(h)h \(m)m" : "\(h)h"
         }
+        return "\(minutes)m"
     }
 
     // MARK: - Helpers
-
-    private func yOffset(forHour hour: Int) -> CGFloat {
-        CGFloat(hour - hourRange.lowerBound) * hourHeight
-    }
-
-    private func yPosition(for date: Date) -> CGFloat {
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: date)
-        let minute = calendar.component(.minute, from: date)
-        let fractionalHour = Double(hour) + Double(minute) / 60.0
-        return CGFloat(fractionalHour - Double(hourRange.lowerBound)) * hourHeight
-    }
-
-    private func hourLabel(_ hour: Int) -> String {
-        let h = hour % 12 == 0 ? 12 : hour % 12
-        let suffix = hour < 12 ? "AM" : "PM"
-        return "\(h) \(suffix)"
-    }
 
     private func deleteLog(_ log: FeedingLog) {
         viewContext.delete(log)
@@ -245,6 +224,37 @@ struct TimelineView: View {
             try viewContext.save()
         } catch {
             print("Failed to delete log: \(error)")
+        }
+    }
+}
+
+// MARK: - Timeline Row
+
+struct TimelineRow: View {
+    let log: FeedingLog
+    let isFirst: Bool
+    let isLast: Bool
+    let onTap: () -> Void
+    let onDelete: () -> Void
+
+    private let dotSize: CGFloat = 12
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            // Dot on the axis
+            Circle()
+                .fill(log.wrappedActivityType.color)
+                .frame(width: dotSize, height: dotSize)
+                .shadow(color: log.wrappedActivityType.color.opacity(0.4), radius: 3, x: 0, y: 1)
+
+            // Event card
+            TimelineEventCard(log: log)
+                .onTapGesture(perform: onTap)
+                .contextMenu {
+                    Button(role: .destructive, action: onDelete) {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
         }
     }
 }
@@ -326,7 +336,7 @@ struct EditFeedingLogView: View {
                         Stepper("Left: \(leftDuration) min", value: $leftDuration, in: 0...60)
                         Stepper("Right: \(rightDuration) min", value: $rightDuration, in: 0...60)
                     }
-                } else {
+                } else if log.wrappedActivityType == .formula {
                     Section("Amount") {
                         Stepper("\(volumeML) mL", value: $volumeML, in: 0...500, step: 10)
                     }
