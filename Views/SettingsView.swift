@@ -88,7 +88,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Data Sync")
                 } footer: {
-                    Text("Share your baby's feeding data with other caregivers using iCloud.")
+                    Text("Share your baby's care data with other caregivers using iCloud.")
                 }
 
                 // About section
@@ -389,9 +389,10 @@ struct ExportDataView: View {
             let date = dateFormatter.string(from: log.wrappedStartTime)
             let time = timeFormatter.string(from: log.wrappedStartTime)
             let type = log.wrappedActivityType.displayName
-            let left = log.wrappedActivityType == .breastfeeding ? "\(log.leftDuration)" : ""
-            let right = log.wrappedActivityType == .breastfeeding ? "\(log.rightDuration)" : ""
-            let volume = log.wrappedActivityType == .formula ? "\(log.volumeML)" : ""
+            let actType = log.wrappedActivityType
+            let left = actType == .breastfeeding ? "\(log.leftDuration)" : ""
+            let right = actType == .breastfeeding ? "\(log.rightDuration)" : ""
+            let volume = actType == .formula ? "\(log.volumeML)" : ""
             let caregiver = log.caregiver?.wrappedName ?? ""
             let notes = log.wrappedNotes.replacingOccurrences(of: ",", with: ";")
 

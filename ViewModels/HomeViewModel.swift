@@ -14,7 +14,9 @@ class HomeViewModel: ObservableObject {
     @Published var recentLogs: [FeedingLog] = []
     @Published var todayBreastfeedingMinutes: Int = 0
     @Published var todayFormulaML: Int = 0
-    @Published var lastFeedingTime: Date?
+    @Published var todaySleepCount: Int = 0
+    @Published var todayDiaperCount: Int = 0
+    @Published var lastLogTime: Date?
 
     private let viewContext: NSManagedObjectContext
 
@@ -24,15 +26,19 @@ class HomeViewModel: ObservableObject {
     }
 
     func refresh() {
+        let today = Date()
         recentLogs = FeedingLog.fetchRecent(limit: 5, in: viewContext)
-        todayBreastfeedingMinutes = FeedingLog.totalBreastfeedingMinutes(for: Date(), in: viewContext)
-        todayFormulaML = FeedingLog.totalFormulaML(for: Date(), in: viewContext)
-        lastFeedingTime = recentLogs.first?.wrappedStartTime
+        todayBreastfeedingMinutes = FeedingLog.totalBreastfeedingMinutes(for: today, in: viewContext)
+        todayFormulaML = FeedingLog.totalFormulaML(for: today, in: viewContext)
+        todaySleepCount = FeedingLog.countForType(.sleep, for: today, in: viewContext)
+        todayDiaperCount = FeedingLog.countForType(.pee, for: today, in: viewContext)
+            + FeedingLog.countForType(.poop, for: today, in: viewContext)
+        lastLogTime = recentLogs.first?.wrappedStartTime
     }
 
-    var timeSinceLastFeeding: String {
-        guard let lastTime = lastFeedingTime else {
-            return "No feedings yet"
+    var timeSinceLastLog: String {
+        guard let lastTime = lastLogTime else {
+            return "No logs yet"
         }
 
         let interval = Date().timeIntervalSince(lastTime)

@@ -33,6 +33,12 @@ struct StatsView: View {
                     // Weekly formula chart
                     formulaChartCard
 
+                    // Weekly sleep chart
+                    sleepChartCard
+
+                    // Weekly diaper chart
+                    diaperChartCard
+
                     // Weekly summary
                     weeklySummaryCard
                 }
@@ -67,7 +73,7 @@ struct StatsView: View {
             Text("Daily Summary")
                 .font(.headline)
 
-            HStack(spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
                 DailyStat(
                     icon: "drop.fill",
                     label: "Breastfeeding",
@@ -83,9 +89,23 @@ struct StatsView: View {
                 )
 
                 DailyStat(
+                    icon: "moon.fill",
+                    label: "Sleeps",
+                    value: "\(viewModel.selectedDateSleepCount)",
+                    color: .indigo
+                )
+
+                DailyStat(
+                    icon: "drop.triangle.fill",
+                    label: "Diapers",
+                    value: "\(viewModel.selectedDateDiaperCount)",
+                    color: .yellow
+                )
+
+                DailyStat(
                     icon: "number",
-                    label: "Feedings",
-                    value: "\(viewModel.selectedDateFeedingCount)",
+                    label: "Total Logs",
+                    value: "\(viewModel.selectedDateLogCount)",
                     color: .green
                 )
             }
@@ -160,12 +180,76 @@ struct StatsView: View {
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 
+    private var sleepChartCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "moon.fill")
+                    .foregroundStyle(.indigo)
+                Text("Sleep (count)")
+                    .font(.headline)
+            }
+
+            if viewModel.dailySleepData.allSatisfy({ $0.value == 0 }) {
+                EmptyChartView(message: "No sleep data this week")
+            } else {
+                Chart(viewModel.dailySleepData) { data in
+                    BarMark(
+                        x: .value("Day", data.dayLabel),
+                        y: .value("Count", data.value)
+                    )
+                    .foregroundStyle(.indigo.gradient)
+                    .cornerRadius(4)
+                }
+                .frame(height: 200)
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
+    private var diaperChartCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "drop.triangle.fill")
+                    .foregroundStyle(.yellow)
+                Text("Diapers (count)")
+                    .font(.headline)
+            }
+
+            if viewModel.dailyDiaperData.allSatisfy({ $0.value == 0 }) {
+                EmptyChartView(message: "No diaper data this week")
+            } else {
+                Chart(viewModel.dailyDiaperData) { data in
+                    BarMark(
+                        x: .value("Day", data.dayLabel),
+                        y: .value("Count", data.value)
+                    )
+                    .foregroundStyle(.yellow.gradient)
+                    .cornerRadius(4)
+                }
+                .frame(height: 200)
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
     private var weeklySummaryCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Weekly Totals")
                 .font(.headline)
 
-            HStack(spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
                 WeeklyStat(
                     label: "Breastfeeding",
                     value: formatMinutes(viewModel.weeklyBreastfeedingTotal),
@@ -179,8 +263,20 @@ struct StatsView: View {
                 )
 
                 WeeklyStat(
-                    label: "Total Feedings",
-                    value: "\(viewModel.weeklyFeedingCount)",
+                    label: "Sleeps",
+                    value: "\(viewModel.weeklySleepTotal)",
+                    color: .indigo
+                )
+
+                WeeklyStat(
+                    label: "Diapers",
+                    value: "\(viewModel.weeklyDiaperTotal)",
+                    color: .yellow
+                )
+
+                WeeklyStat(
+                    label: "Total Logs",
+                    value: "\(viewModel.weeklyLogCount)",
                     color: .green
                 )
             }
