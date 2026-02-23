@@ -43,15 +43,23 @@ struct TimelineView: View {
 
                     // Timeline
                     ScrollView {
+                        let logs = logsForDay
+                        let displayInfo = computeDisplayInfo(for: logs)
                         LazyVStack(spacing: 0) {
-                            ForEach(Array(logsForDay.enumerated()), id: \.element.id) { index, log in
+                            ForEach(Array(logs.enumerated()), id: \.element.id) { index, log in
                                 // Time gap indicator between events
                                 if index > 0 {
-                                    timeGapView(from: logsForDay[index - 1], to: log)
+                                    timeGapView(from: logs[index - 1], to: log)
                                 }
 
                                 // Event row
-                                TimelineRow(log: log, isFirst: index == 0, isLast: index == logsForDay.count - 1) {
+                                TimelineRow(
+                                    log: log,
+                                    isFirst: index == 0,
+                                    isLast: index == logs.count - 1,
+                                    showWarning: displayInfo[index].showWarning,
+                                    sleepDuration: displayInfo[index].sleepDuration
+                                ) {
                                     selectedLog = log
                                     showingEditSheet = true
                                 } onDelete: {
@@ -216,6 +224,36 @@ struct TimelineView: View {
         return "\(minutes)m"
     }
 
+    // MARK: - Sleep Display Info
+
+    private struct LogDisplayInfo {
+        let showWarning: Bool
+        let sleepDuration: TimeInterval?
+    }
+
+    private func computeDisplayInfo(for logs: [FeedingLog]) -> [LogDisplayInfo] {
+        var result = [LogDisplayInfo]()
+        var isSleeping = false
+        var lastSleepTime: Date?
+
+        for log in logs {
+            switch log.wrappedActivityType {
+            case .sleep:
+                result.append(LogDisplayInfo(showWarning: isSleeping, sleepDuration: nil))
+                isSleeping = true
+                lastSleepTime = log.wrappedStartTime
+            case .wakeUp:
+                let duration = lastSleepTime.map { log.wrappedStartTime.timeIntervalSince($0) }
+                result.append(LogDisplayInfo(showWarning: false, sleepDuration: duration))
+                isSleeping = false
+                lastSleepTime = nil
+            default:
+                result.append(LogDisplayInfo(showWarning: isSleeping, sleepDuration: nil))
+            }
+        }
+        return result
+    }
+
     // MARK: - Helpers
 
     private func deleteLog(_ log: FeedingLog) {
@@ -234,6 +272,8 @@ struct TimelineRow: View {
     let log: FeedingLog
     let isFirst: Bool
     let isLast: Bool
+    let showWarning: Bool
+    let sleepDuration: TimeInterval?
     let onTap: () -> Void
     let onDelete: () -> Void
 
@@ -248,7 +288,7 @@ struct TimelineRow: View {
                 .shadow(color: log.wrappedActivityType.color.opacity(0.4), radius: 3, x: 0, y: 1)
 
             // Event card
-            TimelineEventCard(log: log)
+            TimelineEventCard(log: log, showWarning: showWarning, sleepDuration: sleepDuration)
                 .onTapGesture(perform: onTap)
                 .contextMenu {
                     Button(role: .destructive, action: onDelete) {
@@ -261,23 +301,44 @@ struct TimelineRow: View {
 
 // MARK: - Event Card
 
+private func formatSleepDuration(_ interval: TimeInterval) -> String {
+    let totalMinutes = Int(interval) / 60
+    let h = totalMinutes / 60
+    let m = totalMinutes % 60
+    if h > 0 {
+        return m > 0 ? "\(h)h \(m)m" : "Slept \(h)h"
+    }
+    return "\(m)m"
+}
+
 struct TimelineEventCard: View {
     let log: FeedingLog
+    let showWarning: Bool
+    let sleepDuration: TimeInterval?
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: log.wrappedActivityType.icon)
-                .font(.title3)
-                .foregroundStyle(log.wrappedActivityType.color)
-                .frame(width: 32, height: 32)
-                .background(log.wrappedActivityType.color.opacity(0.12))
-                .clipShape(Circle())
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: log.wrappedActivityType.icon)
+                    .font(.title3)
+                    .foregroundStyle(log.wrappedActivityType.color)
+                    .frame(width: 32, height: 32)
+                    .background(log.wrappedActivityType.color.opacity(0.12))
+                    .clipShape(Circle())
+                if showWarning {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                        .background(Color(.systemBackground).clipShape(Circle()))
+                        .offset(x: 6, y: -6)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(log.wrappedActivityType.displayName)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                Text(log.summary)
+                Text(sleepDuration.map { formatSleepDuration($0) } ?? log.summary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
