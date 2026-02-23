@@ -18,10 +18,11 @@ struct TimelineView: View {
     @State private var selectedLog: FeedingLog?
     @State private var showingEditSheet = false
 
-    private var logsForDay: [FeedingLog] {
-        FeedingLog.fetchForDate(selectedDate, in: viewContext)
-            .sorted { ($0.startTime ?? .distantPast) < ($1.startTime ?? .distantPast) }
-    }
+    @FetchRequest(
+        sortDescriptors: [SortDescriptor(\FeedingLog.startTime, order: .forward)],
+        animation: .default
+    )
+    private var logsForDay: FetchedResults<FeedingLog>
 
     var body: some View {
         NavigationStack {
@@ -43,7 +44,7 @@ struct TimelineView: View {
 
                     // Timeline
                     ScrollView {
-                        let logs = logsForDay
+                        let logs = Array(logsForDay)
                         let displayInfo = computeDisplayInfo(for: logs)
                         LazyVStack(spacing: 0) {
                             ForEach(Array(logs.enumerated()), id: \.element.id) { index, log in
@@ -106,27 +107,27 @@ struct TimelineView: View {
                 }
             }
             .sheet(isPresented: $showingBreastfeedingForm) {
-                BreastfeedingFormView {
-                    let d = selectedDate
-                    selectedDate = d
-                }
+                BreastfeedingFormView()
             }
             .sheet(isPresented: $showingFormulaForm) {
-                FormulaFormView {
-                    let d = selectedDate
-                    selectedDate = d
-                }
+                FormulaFormView()
             }
             .sheet(item: $showingSimpleEventType) { type in
-                SimpleEventFormView(activityType: type) {
-                    let d = selectedDate
-                    selectedDate = d
-                }
+                SimpleEventFormView(activityType: type)
             }
             .sheet(isPresented: $showingEditSheet) {
                 if let log = selectedLog {
                     EditFeedingLogView(log: log)
                 }
+            }
+            .onChange(of: selectedDate, initial: true) { _, date in
+                let calendar = Calendar.current
+                let start = calendar.startOfDay(for: date)
+                let end = calendar.date(byAdding: .day, value: 1, to: start)!
+                logsForDay.nsPredicate = NSPredicate(
+                    format: "startTime >= %@ AND startTime < %@",
+                    start as NSDate, end as NSDate
+                )
             }
         }
     }
