@@ -51,7 +51,7 @@ struct TimelineView: View {
                                 }
 
                                 // Event row
-                                TimelineRow(log: log, isFirst: index == 0, isLast: index == logsForDay.count - 1) {
+                                TimelineRow(log: log, isFirst: index == 0, isLast: index == logsForDay.count - 1, showWarning: needsSleepWarning(at: index, in: logsForDay)) {
                                     selectedLog = log
                                     showingEditSheet = true
                                 } onDelete: {
@@ -216,6 +216,19 @@ struct TimelineView: View {
         return "\(minutes)m"
     }
 
+    // MARK: - Sleep Warning
+
+    private func needsSleepWarning(at index: Int, in logs: [FeedingLog]) -> Bool {
+        let log = logs[index]
+        guard log.wrappedActivityType != .wakeUp else { return false }
+        for i in stride(from: index - 1, through: 0, by: -1) {
+            let prevType = logs[i].wrappedActivityType
+            if prevType == .wakeUp { return false }
+            if prevType == .sleep { return true }
+        }
+        return false
+    }
+
     // MARK: - Helpers
 
     private func deleteLog(_ log: FeedingLog) {
@@ -234,6 +247,7 @@ struct TimelineRow: View {
     let log: FeedingLog
     let isFirst: Bool
     let isLast: Bool
+    let showWarning: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
 
@@ -248,7 +262,7 @@ struct TimelineRow: View {
                 .shadow(color: log.wrappedActivityType.color.opacity(0.4), radius: 3, x: 0, y: 1)
 
             // Event card
-            TimelineEventCard(log: log)
+            TimelineEventCard(log: log, showWarning: showWarning)
                 .onTapGesture(perform: onTap)
                 .contextMenu {
                     Button(role: .destructive, action: onDelete) {
@@ -263,15 +277,25 @@ struct TimelineRow: View {
 
 struct TimelineEventCard: View {
     let log: FeedingLog
+    let showWarning: Bool
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: log.wrappedActivityType.icon)
-                .font(.title3)
-                .foregroundStyle(log.wrappedActivityType.color)
-                .frame(width: 32, height: 32)
-                .background(log.wrappedActivityType.color.opacity(0.12))
-                .clipShape(Circle())
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: log.wrappedActivityType.icon)
+                    .font(.title3)
+                    .foregroundStyle(log.wrappedActivityType.color)
+                    .frame(width: 32, height: 32)
+                    .background(log.wrappedActivityType.color.opacity(0.12))
+                    .clipShape(Circle())
+                if showWarning {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                        .background(Color(.systemBackground).clipShape(Circle()))
+                        .offset(x: 6, y: -6)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(log.wrappedActivityType.displayName)
