@@ -236,6 +236,23 @@
         }
       }
     },
+    "activity.desc.ebm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Track expressed breast milk feeding with volume in mL"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以毫升为单位记录瓶喂母乳量"
+          }
+        }
+      }
+    },
     "activity.desc.formula" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -270,6 +287,23 @@
         }
       }
     },
+    "activity.desc.peePoop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record a pee and poop diaper change"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录大小便换尿布"
+          }
+        }
+      }
+    },
     "activity.desc.poop" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -283,6 +317,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "记录一次大便换尿布"
+          }
+        }
+      }
+    },
+    "activity.desc.pumping" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Track the amount of breast milk pumped"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录泵奶量"
           }
         }
       }
@@ -321,6 +372,23 @@
         }
       }
     },
+    "activity.ebm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expressed Breast Milk"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瓶喂母乳"
+          }
+        }
+      }
+    },
     "activity.formula" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -355,6 +423,23 @@
         }
       }
     },
+    "activity.peePoop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pee & Poop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小便"
+          }
+        }
+      }
+    },
     "activity.poop" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -368,6 +453,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "大便"
+          }
+        }
+      }
+    },
+    "activity.pumping" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pumping"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "泵奶"
           }
         }
       }
@@ -674,6 +776,27 @@
         }
       }
     },
+    "EBM" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瓶喂母乳"
+          }
+        }
+      }
+    },
+    "EBM (mL)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瓶喂母乳（毫升）"
+          }
+        }
+      }
+    },
     "Edit" : {
       "localizations" : {
         "zh-Hans" : {
@@ -747,6 +870,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将喂养记录导出为 CSV 文件。"
+          }
+        }
+      }
+    },
+    "Expressed Breast Milk" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瓶喂母乳"
           }
         }
       }
@@ -973,12 +1106,32 @@
         }
       }
     },
+    "Log Expressed Breast Milk" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录瓶喂母乳"
+          }
+        }
+      }
+    },
     "Log Formula" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "记录配方奶"
+          }
+        }
+      }
+    },
+    "Log Pumping" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录泵奶"
           }
         }
       }
@@ -1051,6 +1204,17 @@
         }
       }
     },
+    "No EBM data this week" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本周暂无瓶喂母乳数据"
+          }
+        }
+      }
+    },
     "No events on this day" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1094,6 +1258,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂无记录"
+          }
+        }
+      }
+    },
+    "No pumping data this week" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本周暂无泵奶数据"
           }
         }
       }
@@ -1176,6 +1351,16 @@
         }
       }
     },
+    "Pee & Poop" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小便"
+          }
+        }
+      }
+    },
     "Please restart the app to apply the language change." : {
       "localizations" : {
         "zh-Hans" : {
@@ -1208,6 +1393,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐私政策"
+          }
+        }
+      }
+    },
+    "Pumping" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "泵奶"
+          }
+        }
+      }
+    },
+    "Pumping (mL)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "泵奶（毫升）"
           }
         }
       }

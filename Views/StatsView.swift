@@ -33,6 +33,12 @@ struct StatsView: View {
                     // Weekly formula chart
                     formulaChartCard
 
+                    // Weekly EBM chart
+                    ebmChartCard
+
+                    // Weekly pumping chart
+                    pumpingChartCard
+
                     // Weekly sleep chart
                     sleepChartCard
 
@@ -86,6 +92,20 @@ struct StatsView: View {
                     label: "Formula",
                     value: "\(viewModel.selectedDateFormulaML) mL",
                     color: .blue
+                )
+
+                DailyStat(
+                    icon: "drop.fill",
+                    label: "EBM",
+                    value: "\(viewModel.selectedDateEBMML) mL",
+                    color: .cyan
+                )
+
+                DailyStat(
+                    icon: "arrow.up.heart.fill",
+                    label: "Pumping",
+                    value: "\(viewModel.selectedDatePumpingML) mL",
+                    color: .purple
                 )
 
                 DailyStat(
@@ -180,6 +200,70 @@ struct StatsView: View {
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 
+    private var ebmChartCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "drop.fill")
+                    .foregroundStyle(.cyan)
+                Text("EBM (mL)")
+                    .font(.headline)
+            }
+
+            if viewModel.dailyEBMData.allSatisfy({ $0.value == 0 }) {
+                EmptyChartView(message: "No EBM data this week")
+            } else {
+                Chart(viewModel.dailyEBMData) { data in
+                    BarMark(
+                        x: .value("Day", data.dayLabel),
+                        y: .value("mL", data.value)
+                    )
+                    .foregroundStyle(.cyan.gradient)
+                    .cornerRadius(4)
+                }
+                .frame(height: 200)
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
+    private var pumpingChartCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "arrow.up.heart.fill")
+                    .foregroundStyle(.purple)
+                Text("Pumping (mL)")
+                    .font(.headline)
+            }
+
+            if viewModel.dailyPumpingData.allSatisfy({ $0.value == 0 }) {
+                EmptyChartView(message: "No pumping data this week")
+            } else {
+                Chart(viewModel.dailyPumpingData) { data in
+                    BarMark(
+                        x: .value("Day", data.dayLabel),
+                        y: .value("mL", data.value)
+                    )
+                    .foregroundStyle(.purple.gradient)
+                    .cornerRadius(4)
+                }
+                .frame(height: 200)
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
     private var sleepChartCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -260,6 +344,18 @@ struct StatsView: View {
                     label: "Formula",
                     value: "\(viewModel.weeklyFormulaTotal) mL",
                     color: .blue
+                )
+
+                WeeklyStat(
+                    label: "EBM",
+                    value: "\(viewModel.weeklyEBMTotal) mL",
+                    color: .cyan
+                )
+
+                WeeklyStat(
+                    label: "Pumping",
+                    value: "\(viewModel.weeklyPumpingTotal) mL",
+                    color: .purple
                 )
 
                 WeeklyStat(

@@ -14,6 +14,8 @@ class HomeViewModel: ObservableObject {
     @Published var recentLogs: [FeedingLog] = []
     @Published var todayBreastfeedingMinutes: Int = 0
     @Published var todayFormulaML: Int = 0
+    @Published var todayEBMML: Int = 0
+    @Published var todayPumpingML: Int = 0
     @Published var todaySleepCount: Int = 0
     @Published var todayDiaperCount: Int = 0
     @Published var lastLogTime: Date?
@@ -30,9 +32,12 @@ class HomeViewModel: ObservableObject {
         recentLogs = FeedingLog.fetchRecent(limit: 5, in: viewContext)
         todayBreastfeedingMinutes = FeedingLog.totalBreastfeedingMinutes(for: today, in: viewContext)
         todayFormulaML = FeedingLog.totalFormulaML(for: today, in: viewContext)
+        todayEBMML = FeedingLog.totalExpressedBreastMilkML(for: today, in: viewContext)
+        todayPumpingML = FeedingLog.totalPumpingML(for: today, in: viewContext)
         todaySleepCount = FeedingLog.countForType(.sleep, for: today, in: viewContext)
         todayDiaperCount = FeedingLog.countForType(.pee, for: today, in: viewContext)
             + FeedingLog.countForType(.poop, for: today, in: viewContext)
+            + FeedingLog.countForType(.peePoop, for: today, in: viewContext)
         lastLogTime = recentLogs.first?.wrappedStartTime
     }
 
