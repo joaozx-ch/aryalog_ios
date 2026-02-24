@@ -14,6 +14,8 @@ class StatsViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var dailyBreastfeedingData: [DailyData] = []
     @Published var dailyFormulaData: [DailyData] = []
+    @Published var dailyEBMData: [DailyData] = []
+    @Published var dailyPumpingData: [DailyData] = []
     @Published var dailySleepData: [DailyData] = []
     @Published var dailyDiaperData: [DailyData] = []
 
@@ -42,6 +44,8 @@ class StatsViewModel: ObservableObject {
 
         var breastfeedingData: [DailyData] = []
         var formulaData: [DailyData] = []
+        var ebmData: [DailyData] = []
+        var pumpingData: [DailyData] = []
         var sleepData: [DailyData] = []
         var diaperData: [DailyData] = []
 
@@ -50,18 +54,25 @@ class StatsViewModel: ObservableObject {
 
             let breastfeedingMinutes = FeedingLog.totalBreastfeedingMinutes(for: date, in: viewContext)
             let formulaML = FeedingLog.totalFormulaML(for: date, in: viewContext)
+            let ebmML = FeedingLog.totalExpressedBreastMilkML(for: date, in: viewContext)
+            let pumpingML = FeedingLog.totalPumpingML(for: date, in: viewContext)
             let sleepCount = FeedingLog.countForType(.sleep, for: date, in: viewContext)
             let diaperCount = FeedingLog.countForType(.pee, for: date, in: viewContext)
                 + FeedingLog.countForType(.poop, for: date, in: viewContext)
+                + FeedingLog.countForType(.peePoop, for: date, in: viewContext)
 
             breastfeedingData.append(DailyData(date: date, value: Double(breastfeedingMinutes)))
             formulaData.append(DailyData(date: date, value: Double(formulaML)))
+            ebmData.append(DailyData(date: date, value: Double(ebmML)))
+            pumpingData.append(DailyData(date: date, value: Double(pumpingML)))
             sleepData.append(DailyData(date: date, value: Double(sleepCount)))
             diaperData.append(DailyData(date: date, value: Double(diaperCount)))
         }
 
         self.dailyBreastfeedingData = breastfeedingData
         self.dailyFormulaData = formulaData
+        self.dailyEBMData = ebmData
+        self.dailyPumpingData = pumpingData
         self.dailySleepData = sleepData
         self.dailyDiaperData = diaperData
     }
@@ -79,6 +90,14 @@ class StatsViewModel: ObservableObject {
         FeedingLog.totalFormulaML(for: selectedDate, in: viewContext)
     }
 
+    var selectedDateEBMML: Int {
+        FeedingLog.totalExpressedBreastMilkML(for: selectedDate, in: viewContext)
+    }
+
+    var selectedDatePumpingML: Int {
+        FeedingLog.totalPumpingML(for: selectedDate, in: viewContext)
+    }
+
     var selectedDateSleepCount: Int {
         FeedingLog.countForType(.sleep, for: selectedDate, in: viewContext)
     }
@@ -86,6 +105,7 @@ class StatsViewModel: ObservableObject {
     var selectedDateDiaperCount: Int {
         FeedingLog.countForType(.pee, for: selectedDate, in: viewContext)
             + FeedingLog.countForType(.poop, for: selectedDate, in: viewContext)
+            + FeedingLog.countForType(.peePoop, for: selectedDate, in: viewContext)
     }
 
     var selectedDateLogs: [FeedingLog] {
@@ -103,6 +123,14 @@ class StatsViewModel: ObservableObject {
 
     var weeklyFormulaTotal: Int {
         Int(dailyFormulaData.reduce(0) { $0 + $1.value })
+    }
+
+    var weeklyEBMTotal: Int {
+        Int(dailyEBMData.reduce(0) { $0 + $1.value })
+    }
+
+    var weeklyPumpingTotal: Int {
+        Int(dailyPumpingData.reduce(0) { $0 + $1.value })
     }
 
     var weeklySleepTotal: Int {

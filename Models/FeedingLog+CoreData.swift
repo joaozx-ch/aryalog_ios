@@ -57,7 +57,7 @@ extension FeedingLog {
                 parts.append(String(localized: "R: \(rightDuration)m"))
             }
             return parts.isEmpty ? String(localized: "No duration") : parts.joined(separator: ", ")
-        case .formula:
+        case .formula, .expressedBreastMilk, .pumping:
             return formattedVolume
         case .sleep:
             return wrappedNotes.isEmpty ? String(localized: "Fell asleep") : wrappedNotes
@@ -67,6 +67,8 @@ extension FeedingLog {
             return wrappedNotes.isEmpty ? String(localized: "Pee") : wrappedNotes
         case .poop:
             return wrappedNotes.isEmpty ? String(localized: "Poop") : wrappedNotes
+        case .peePoop:
+            return wrappedNotes.isEmpty ? String(localized: "Pee & Poop") : wrappedNotes
         }
     }
 
@@ -140,6 +142,20 @@ extension FeedingLog {
         let logs = fetchForDate(date, in: context)
         return logs
             .filter { $0.wrappedActivityType == .formula }
+            .reduce(0) { $0 + Int($1.volumeML) }
+    }
+
+    static func totalExpressedBreastMilkML(for date: Date, in context: NSManagedObjectContext) -> Int {
+        let logs = fetchForDate(date, in: context)
+        return logs
+            .filter { $0.wrappedActivityType == .expressedBreastMilk }
+            .reduce(0) { $0 + Int($1.volumeML) }
+    }
+
+    static func totalPumpingML(for date: Date, in context: NSManagedObjectContext) -> Int {
+        let logs = fetchForDate(date, in: context)
+        return logs
+            .filter { $0.wrappedActivityType == .pumping }
             .reduce(0) { $0 + Int($1.volumeML) }
     }
 

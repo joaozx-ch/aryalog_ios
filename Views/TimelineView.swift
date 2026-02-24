@@ -14,6 +14,8 @@ struct TimelineView: View {
     @State private var selectedDate = Date()
     @State private var showingBreastfeedingForm = false
     @State private var showingFormulaForm = false
+    @State private var showingEBMForm = false
+    @State private var showingPumpingForm = false
     @State private var showingSimpleEventType: ActivityType?
     @State private var selectedLog: FeedingLog?
     @State private var showingEditSheet = false
@@ -84,6 +86,14 @@ struct TimelineView: View {
                             Button(action: { showingFormulaForm = true }) {
                                 Label("Formula", systemImage: "cup.and.saucer.fill")
                             }
+                            Button(action: { showingEBMForm = true }) {
+                                Label("Expressed Breast Milk", systemImage: "drop.fill")
+                            }
+                        }
+                        Section("Pumping") {
+                            Button(action: { showingPumpingForm = true }) {
+                                Label("Pumping", systemImage: "arrow.up.heart.fill")
+                            }
                         }
                         Section("Sleep") {
                             Button(action: { showingSimpleEventType = .sleep }) {
@@ -100,6 +110,9 @@ struct TimelineView: View {
                             Button(action: { showingSimpleEventType = .poop }) {
                                 Label("Poop", systemImage: "leaf.fill")
                             }
+                            Button(action: { showingSimpleEventType = .peePoop }) {
+                                Label("Pee & Poop", systemImage: "drop.triangle.fill")
+                            }
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -111,6 +124,12 @@ struct TimelineView: View {
             }
             .sheet(isPresented: $showingFormulaForm) {
                 FormulaFormView()
+            }
+            .sheet(isPresented: $showingEBMForm) {
+                EBMFormView()
+            }
+            .sheet(isPresented: $showingPumpingForm) {
+                PumpingFormView()
             }
             .sheet(item: $showingSimpleEventType) { type in
                 SimpleEventFormView(activityType: type)
@@ -155,8 +174,16 @@ struct TimelineView: View {
         let formulaML = logsForDay
             .filter { $0.wrappedActivityType == .formula }
             .reduce(0) { $0 + Int($1.volumeML) }
+        let ebmML = logsForDay
+            .filter { $0.wrappedActivityType == .expressedBreastMilk }
+            .reduce(0) { $0 + Int($1.volumeML) }
+        let pumpingML = logsForDay
+            .filter { $0.wrappedActivityType == .pumping }
+            .reduce(0) { $0 + Int($1.volumeML) }
         let sleepCount = logsForDay.filter { $0.wrappedActivityType == .sleep }.count
-        let diaperCount = logsForDay.filter { $0.wrappedActivityType == .pee || $0.wrappedActivityType == .poop }.count
+        let diaperCount = logsForDay.filter {
+            $0.wrappedActivityType == .pee || $0.wrappedActivityType == .poop || $0.wrappedActivityType == .peePoop
+        }.count
 
         return HStack(spacing: 12) {
             Label("\(logsForDay.count) events", systemImage: "list.bullet")
@@ -167,6 +194,14 @@ struct TimelineView: View {
             if formulaML > 0 {
                 Label("\(formulaML) mL", systemImage: "cup.and.saucer.fill")
                     .foregroundStyle(.blue)
+            }
+            if ebmML > 0 {
+                Label("\(ebmML) mL", systemImage: "drop.fill")
+                    .foregroundStyle(.cyan)
+            }
+            if pumpingML > 0 {
+                Label("\(pumpingML) mL", systemImage: "arrow.up.heart.fill")
+                    .foregroundStyle(.purple)
             }
             if sleepCount > 0 {
                 Label("\(sleepCount)", systemImage: "moon.fill")
@@ -398,7 +433,9 @@ struct EditFeedingLogView: View {
                         Stepper("Left: \(leftDuration) min", value: $leftDuration, in: 0...60)
                         Stepper("Right: \(rightDuration) min", value: $rightDuration, in: 0...60)
                     }
-                } else if log.wrappedActivityType == .formula {
+                } else if log.wrappedActivityType == .formula
+                       || log.wrappedActivityType == .expressedBreastMilk
+                       || log.wrappedActivityType == .pumping {
                     Section("Amount") {
                         Stepper("\(volumeML) mL", value: $volumeML, in: 0...500, step: 10)
                     }
