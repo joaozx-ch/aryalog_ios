@@ -8,6 +8,20 @@
 import SwiftUI
 import CoreData
 
+enum AppLanguage: String, CaseIterable {
+    case system = ""
+    case english = "en"
+    case chinese = "zh-Hans"
+
+    var displayName: String {
+        switch self {
+        case .system:  return String(localized: "System Default")
+        case .english: return "English"
+        case .chinese: return "简体中文"
+        }
+    }
+}
+
 struct SettingsView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
@@ -16,8 +30,10 @@ struct SettingsView: View {
     )
     private var caregivers: FetchedResults<Caregiver>
 
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = ""
     @State private var showingShareSheet = false
     @State private var showingEditName = false
+    @State private var showingRestartAlert = false
     @State private var editingCaregiver: Caregiver?
     @State private var newName = ""
 
@@ -80,6 +96,23 @@ struct SettingsView: View {
                     }
                 }
 
+                // Language section
+                Section("Language") {
+                    Picker("Language", selection: $selectedLanguage) {
+                        ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                            Text(lang.displayName).tag(lang.rawValue)
+                        }
+                    }
+                    .onChange(of: selectedLanguage) { _, newValue in
+                        if newValue.isEmpty {
+                            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+                        } else {
+                            UserDefaults.standard.set([newValue], forKey: "AppleLanguages")
+                        }
+                        showingRestartAlert = true
+                    }
+                }
+
                 // CloudKit sharing section
                 Section {
                     NavigationLink(destination: CloudKitSharingGuideView()) {
@@ -119,6 +152,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .alert(String(localized: "Restart Required"), isPresented: $showingRestartAlert) {
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: {
+                Text("Please restart the app to apply the language change.")
+            }
             .sheet(isPresented: $showingEditName) {
                 EditNameSheet(
                     name: $newName,
@@ -312,7 +350,7 @@ struct SectionHeader: View {
 }
 
 struct BulletPoint: View {
-    let text: String
+    let text: LocalizedStringKey
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {

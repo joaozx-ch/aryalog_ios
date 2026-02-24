@@ -291,9 +291,9 @@ struct StatsView: View {
         if minutes >= 60 {
             let hours = minutes / 60
             let mins = minutes % 60
-            return "\(hours)h \(mins)m"
+            return String(localized: "\(hours)h \(mins)m")
         }
-        return "\(minutes) min"
+        return String(localized: "\(minutes) min")
     }
 }
 

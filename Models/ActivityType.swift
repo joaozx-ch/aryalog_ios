@@ -19,12 +19,12 @@ enum ActivityType: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .breastfeeding: return "Breastfeeding"
-        case .formula: return "Formula"
-        case .sleep: return "Sleep"
-        case .wakeUp: return "Wake Up"
-        case .pee: return "Pee"
-        case .poop: return "Poop"
+        case .breastfeeding: return String(localized: "activity.breastfeeding", defaultValue: "Breastfeeding")
+        case .formula:       return String(localized: "activity.formula",       defaultValue: "Formula")
+        case .sleep:         return String(localized: "activity.sleep",         defaultValue: "Sleep")
+        case .wakeUp:        return String(localized: "activity.wakeUp",        defaultValue: "Wake Up")
+        case .pee:           return String(localized: "activity.pee",           defaultValue: "Pee")
+        case .poop:          return String(localized: "activity.poop",          defaultValue: "Poop")
         }
     }
 
@@ -52,12 +52,12 @@ enum ActivityType: String, CaseIterable, Identifiable {
 
     var description: String {
         switch self {
-        case .breastfeeding: return "Track breastfeeding sessions with left and right side durations"
-        case .formula: return "Track formula feeding with volume in mL"
-        case .sleep: return "Record when baby falls asleep"
-        case .wakeUp: return "Record when baby wakes up"
-        case .pee: return "Record a pee diaper change"
-        case .poop: return "Record a poop diaper change"
+        case .breastfeeding: return String(localized: "activity.desc.breastfeeding", defaultValue: "Track breastfeeding sessions with left and right side durations")
+        case .formula:       return String(localized: "activity.desc.formula",       defaultValue: "Track formula feeding with volume in mL")
+        case .sleep:         return String(localized: "activity.desc.sleep",         defaultValue: "Record when baby falls asleep")
+        case .wakeUp:        return String(localized: "activity.desc.wakeUp",        defaultValue: "Record when baby wakes up")
+        case .pee:           return String(localized: "activity.desc.pee",           defaultValue: "Record a pee diaper change")
+        case .poop:          return String(localized: "activity.desc.poop",          defaultValue: "Record a poop diaper change")
         }
     }
 

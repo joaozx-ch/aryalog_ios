@@ -38,7 +38,7 @@ class HomeViewModel: ObservableObject {
 
     var timeSinceLastLog: String {
         guard let lastTime = lastLogTime else {
-            return "No logs yet"
+            return String(localized: "No logs yet")
         }
 
         let interval = Date().timeIntervalSince(lastTime)
@@ -46,9 +46,9 @@ class HomeViewModel: ObservableObject {
         let minutes = (Int(interval) % 3600) / 60
 
         if hours > 0 {
-            return "\(hours)h \(minutes)m ago"
+            return String(localized: "\(hours)h \(minutes)m ago")
         } else {
-            return "\(minutes)m ago"
+            return String(localized: "\(minutes)m ago")
         }
     }
 
