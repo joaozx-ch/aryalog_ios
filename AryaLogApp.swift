@@ -12,6 +12,13 @@ import CoreData
 struct AryaLogApp: App {
     let persistenceController = PersistenceController.shared
 
+    init() {
+        let savedLanguage = UserDefaults.standard.string(forKey: "selectedLanguage") ?? ""
+        if !savedLanguage.isEmpty {
+            UserDefaults.standard.set([savedLanguage], forKey: "AppleLanguages")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -106,11 +113,6 @@ struct SetupView: View {
 struct MainTabView: View {
     var body: some View {
         TabView {
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house.fill")
-                }
-
             TimelineView()
                 .tabItem {
                     Label("Timeline", systemImage: "list.bullet")

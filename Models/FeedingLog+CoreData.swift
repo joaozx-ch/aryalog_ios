@@ -37,13 +37,13 @@ extension FeedingLog {
         if total >= 60 {
             let hours = total / 60
             let minutes = total % 60
-            return "\(hours)h \(minutes)m"
+            return String(localized: "\(hours)h \(minutes)m")
         }
-        return "\(total)m"
+        return String(localized: "\(total)m")
     }
 
     var formattedVolume: String {
-        "\(volumeML) mL"
+        String(localized: "\(volumeML) mL")
     }
 
     var summary: String {
@@ -51,22 +51,22 @@ extension FeedingLog {
         case .breastfeeding:
             var parts: [String] = []
             if leftDuration > 0 {
-                parts.append("L: \(leftDuration)m")
+                parts.append(String(localized: "L: \(leftDuration)m"))
             }
             if rightDuration > 0 {
-                parts.append("R: \(rightDuration)m")
+                parts.append(String(localized: "R: \(rightDuration)m"))
             }
-            return parts.isEmpty ? "No duration" : parts.joined(separator: ", ")
+            return parts.isEmpty ? String(localized: "No duration") : parts.joined(separator: ", ")
         case .formula:
             return formattedVolume
         case .sleep:
-            return wrappedNotes.isEmpty ? "Fell asleep" : wrappedNotes
+            return wrappedNotes.isEmpty ? String(localized: "Fell asleep") : wrappedNotes
         case .wakeUp:
-            return wrappedNotes.isEmpty ? "Woke up" : wrappedNotes
+            return wrappedNotes.isEmpty ? String(localized: "Woke up") : wrappedNotes
         case .pee:
-            return wrappedNotes.isEmpty ? "Pee" : wrappedNotes
+            return wrappedNotes.isEmpty ? String(localized: "Pee") : wrappedNotes
         case .poop:
-            return wrappedNotes.isEmpty ? "Poop" : wrappedNotes
+            return wrappedNotes.isEmpty ? String(localized: "Poop") : wrappedNotes
         }
     }
 

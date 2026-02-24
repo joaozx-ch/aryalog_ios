@@ -220,9 +220,9 @@ struct TimelineView: View {
         if minutes >= 60 {
             let h = minutes / 60
             let m = minutes % 60
-            return m > 0 ? "\(h)h \(m)m" : "\(h)h"
+            return m > 0 ? String(localized: "\(h)h \(m)m") : String(localized: "\(h)h")
         }
-        return "\(minutes)m"
+        return String(localized: "\(minutes)m")
     }
 
     // MARK: - Sleep Display Info
@@ -307,9 +307,9 @@ private func formatSleepDuration(_ interval: TimeInterval) -> String {
     let h = totalMinutes / 60
     let m = totalMinutes % 60
     if h > 0 {
-        return m > 0 ? "\(h)h \(m)m" : "Slept \(h)h"
+        return m > 0 ? String(localized: "\(h)h \(m)m") : String(localized: "Slept \(h)h")
     }
-    return "\(m)m"
+    return String(localized: "\(m)m")
 }
 
 struct TimelineEventCard: View {
