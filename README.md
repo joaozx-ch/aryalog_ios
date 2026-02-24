@@ -1,15 +1,20 @@
 # AryaLog
 
-A baby care tracking app for iOS built with SwiftUI, Core Data, and CloudKit. Log breastfeeding sessions and formula feedings, view statistics, and sync data across devices and caregivers via iCloud.
+A baby care tracking app for iOS built with SwiftUI, Core Data, and CloudKit. Log feeding sessions, pumping, sleep, and diaper changes, view statistics, and sync data across devices and caregivers via iCloud.
 
 ## Features
 
 - **Breastfeeding tracking** — Log left/right side durations with quick-select presets and fine-tune controls
 - **Formula tracking** — Log volume in mL with preset amounts and a slider for precise entry
-- **Event timeline** — Vertical time-axis visualization showing feeding events plotted at their actual times throughout the day
-- **Statistics & charts** — Daily and weekly summaries with bar charts for breastfeeding minutes and formula volume (powered by Swift Charts)
-- **Multi-caregiver support** — Multiple caregivers can share and contribute to the same feeding log
+- **Expressed breast milk (EBM) tracking** — Log volume fed to baby from pumped/stored milk
+- **Pumping tracking** — Log the volume of breast milk pumped by mom
+- **Sleep & wake tracking** — Record sleep and wake-up events with warnings for overlapping sleep sessions
+- **Diaper tracking** — Log pee, poop, or combined pee & poop diaper changes
+- **Event timeline** — Vertical time-axis visualization showing all events plotted at their actual times throughout the day, with time-gap indicators
+- **Statistics & charts** — Daily and weekly summaries with bar charts for all activity types (powered by Swift Charts)
+- **Multi-caregiver support** — Multiple caregivers can share and contribute to the same care log
 - **CloudKit sync** — Data syncs automatically across devices signed into the same iCloud account, with sharing support for different Apple IDs
+- **Simplified Chinese support** — Full zh-Hans localization with an in-app language picker
 - **CSV export** — Export all feeding data as a CSV file for external use
 
 ## Screenshots
@@ -39,15 +44,16 @@ A baby care tracking app for iOS built with SwiftUI, Core Data, and CloudKit. Lo
 
 4. Build and run on a simulator or device.
 
-On first launch, you'll be prompted to enter your name as the primary caregiver. After setup, the app opens to the Home tab.
+On first launch, you'll be prompted to enter your name as the primary caregiver. After setup, the app opens to the Timeline tab.
 
 ## Architecture
 
 ```
 AryaLog/
 ├── AryaLogApp.swift              # App entry point, setup flow, tab navigation
+├── Localizable.xcstrings         # String catalog (en + zh-Hans)
 ├── Models/
-│   ├── ActivityType.swift         # Breastfeeding / Formula enum
+│   ├── ActivityType.swift         # Activity type enum (breastfeeding, formula, EBM, pumping, sleep, wakeUp, pee, poop, peePoop)
 │   ├── Caregiver+CoreData.swift   # Caregiver entity helpers & fetch requests
 │   ├── FeedingLog+CoreData.swift  # FeedingLog entity helpers & statistics
 │   └── AryaLog.xcdatamodeld      # Core Data model
@@ -55,15 +61,17 @@ AryaLog/
 │   ├── PersistenceController.swift # Core Data + CloudKit stack
 │   └── ShareController.swift       # CloudKit sharing logic
 ├── ViewModels/
-│   ├── HomeViewModel.swift         # Home screen data
+│   ├── HomeViewModel.swift         # Home screen data (unused tab, kept for reference)
 │   └── StatsViewModel.swift        # Statistics & chart data
 └── Views/
-    ├── HomeView.swift              # Dashboard with quick-add and recent activity
     ├── TimelineView.swift          # Vertical event timeline visualization
     ├── StatsView.swift             # Charts and daily/weekly summaries
-    ├── SettingsView.swift          # Profile, caregivers, export, sharing guide
+    ├── SettingsView.swift          # Profile, caregivers, language, export, sharing guide
     ├── BreastfeedingFormView.swift  # Breastfeeding entry form
-    └── FormulaFormView.swift        # Formula entry form
+    ├── FormulaFormView.swift        # Formula entry form
+    ├── EBMFormView.swift            # Expressed breast milk entry form
+    ├── PumpingFormView.swift        # Pumping entry form
+    └── SimpleEventFormView.swift    # Simple event form (sleep, wake, pee, poop, pee & poop)
 ```
 
 ### Data Model
@@ -75,6 +83,8 @@ AryaLog/
 
 A Caregiver has many FeedingLogs (cascade delete). A FeedingLog belongs to one Caregiver (nullify on delete).
 
+`volumeML` is used by formula, EBM, and pumping activity types. `leftDuration` / `rightDuration` are used by breastfeeding.
+
 ### CloudKit Integration
 
 The app uses `NSPersistentCloudKitContainer` to sync Core Data with iCloud automatically. Configuration:
@@ -84,14 +94,17 @@ The app uses `NSPersistentCloudKitContainer` to sync Core Data with iCloud autom
 - **Merge policy:** Property-level object trump (last write wins per field)
 - **History tracking:** Enabled for conflict resolution
 
+### Localization
+
+The app ships with English (source language) and Simplified Chinese (zh-Hans). All user-facing strings are stored in `Localizable.xcstrings` (Xcode string catalog format). The language can be changed inside the app via **Settings → Language** without leaving the app (requires restart to apply).
+
 ## App Tabs
 
 | Tab | Description |
 |-----|-------------|
-| **Home** | Today's summary (breastfeeding minutes, formula mL, time since last feeding), quick-add buttons, recent activity feed |
-| **Timeline** | Vertical time-axis with events plotted at their actual times, date picker to browse days, tap to edit, long-press to delete |
-| **Stats** | Date picker, daily stats, weekly bar charts for breastfeeding and formula, weekly totals |
-| **Settings** | Edit profile, manage caregivers, CloudKit sharing guide, CSV data export, app info |
+| **Timeline** | Vertical time-axis with all events plotted at their actual times, date picker to browse days, time-gap indicators, tap to edit, long-press to delete |
+| **Stats** | Date picker, daily stats grid, weekly bar charts for all activity types, weekly totals |
+| **Settings** | Edit profile, manage caregivers, language selection, CloudKit sharing guide, CSV data export, app info |
 
 ## License
 
