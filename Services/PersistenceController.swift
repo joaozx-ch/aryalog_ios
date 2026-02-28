@@ -93,9 +93,16 @@ struct PersistenceController {
             container.persistentStoreDescriptions = [privateDescription, sharedDescription]
         }
 
-        container.loadPersistentStores { _, error in
+        container.loadPersistentStores { storeDescription, error in
             if let error = error as NSError? {
-                fatalError("Unresolved error \(error), \(error.userInfo)")
+                // CloudKit setup failures (e.g. no iCloud account on simulator) are non-fatal:
+                // the store still loads locally. Only crash for unrecoverable storage errors.
+                let iCloudSetupFailure = error.domain == NSCocoaErrorDomain && error.code == 134400
+                if iCloudSetupFailure {
+                    print("CloudKit sync unavailable for \(storeDescription.url?.lastPathComponent ?? "store"): \(error.localizedDescription)")
+                } else {
+                    fatalError("Unresolved error \(error), \(error.userInfo)")
+                }
             }
         }
 

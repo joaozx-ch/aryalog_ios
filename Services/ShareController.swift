@@ -39,6 +39,12 @@ class ShareController: NSObject {
         for caregiver: Caregiver,
         onDone: @escaping () -> Void
     ) async throws -> UICloudSharingController {
+        // Verify iCloud is available before doing any CloudKit work.
+        let accountStatus = try await ckContainer.accountStatus()
+        guard accountStatus == .available else {
+            throw SharingError.iCloudUnavailable(accountStatus)
+        }
+
         let persistentContainer = PersistenceController.shared.container
 
         // Fetch an existing share, or create a new one.
@@ -63,6 +69,28 @@ class ShareController: NSObject {
         controller.availablePermissions = [.allowReadWrite, .allowPrivate]
         controller.delegate = delegate
         return controller
+    }
+
+    // MARK: - Errors
+
+    enum SharingError: LocalizedError {
+        case iCloudUnavailable(CKAccountStatus)
+
+        var errorDescription: String? {
+            switch self {
+            case .iCloudUnavailable(let status):
+                switch status {
+                case .noAccount:
+                    return "No iCloud account is signed in. Go to Settings → [your name] and sign in to iCloud, then try again."
+                case .restricted:
+                    return "iCloud access is restricted on this device (e.g. by Screen Time or MDM). Sharing requires an active iCloud account."
+                case .temporarilyUnavailable:
+                    return "iCloud is temporarily unavailable. Please try again in a moment."
+                default:
+                    return "iCloud is not available (status \(status.rawValue)). Please check your iCloud settings and try again."
+                }
+            }
+        }
     }
 
     // MARK: - Delegate

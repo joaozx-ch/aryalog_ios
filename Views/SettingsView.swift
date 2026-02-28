@@ -41,6 +41,7 @@ struct SettingsView: View {
     @State private var showingRestartAlert = false
     @State private var showingCloudSharing = false
     @State private var isPreparingShare = false
+    @State private var shareError: String?
     @State private var editingCaregiver: Caregiver?
     @State private var newName = ""
     @State private var sharingController: UICloudSharingController?
@@ -166,6 +167,14 @@ struct SettingsView: View {
             } message: {
                 Text("Please restart the app to apply the language change.")
             }
+            .alert("Sharing Unavailable", isPresented: Binding(
+                get: { shareError != nil },
+                set: { if !$0 { shareError = nil } }
+            )) {
+                Button("OK", role: .cancel) { shareError = nil }
+            } message: {
+                Text(shareError ?? "")
+            }
             .sheet(isPresented: $showingEditName) {
                 EditNameSheet(
                     name: $newName,
@@ -204,6 +213,12 @@ struct SettingsView: View {
                 }
                 showingCloudSharing = true
             } catch {
+                // Include CKError code in the message to help diagnose CloudKit issues.
+                if let ckError = error as? CKError {
+                    shareError = "\(error.localizedDescription)\n\n(CKError \(ckError.code.rawValue))"
+                } else {
+                    shareError = error.localizedDescription
+                }
                 print("Failed to prepare share: \(error)")
             }
         }
