@@ -7,6 +7,10 @@
 
 import SwiftUI
 import CoreData
+import CloudKit
+import UIKit
+
+// MARK: - Language
 
 enum AppLanguage: String, CaseIterable {
     case system = ""
@@ -22,6 +26,8 @@ enum AppLanguage: String, CaseIterable {
     }
 }
 
+// MARK: - Settings View
+
 struct SettingsView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
@@ -31,11 +37,12 @@ struct SettingsView: View {
     private var caregivers: FetchedResults<Caregiver>
 
     @AppStorage("selectedLanguage") private var selectedLanguage: String = ""
-    @State private var showingShareSheet = false
     @State private var showingEditName = false
     @State private var showingRestartAlert = false
+    @State private var showingCloudSharing = false
     @State private var editingCaregiver: Caregiver?
     @State private var newName = ""
+    @State private var sharingController: UICloudSharingController?
 
     var currentCaregiver: Caregiver? {
         caregivers.first { $0.isCurrentUser }
@@ -73,7 +80,7 @@ struct SettingsView: View {
                 }
 
                 // Caregivers section
-                Section("Caregivers") {
+                Section {
                     ForEach(caregivers) { caregiver in
                         HStack {
                             Image(systemName: caregiver.isCurrentUser ? "person.fill" : "person")
@@ -91,9 +98,13 @@ struct SettingsView: View {
                         }
                     }
 
-                    Button(action: { showingShareSheet = true }) {
-                        Label("Invite Caregiver", systemImage: "person.badge.plus")
+                    Button(action: openShareController) {
+                        Label("Share with Caregiver", systemImage: "person.badge.plus")
                     }
+                } header: {
+                    Text("Caregivers")
+                } footer: {
+                    Text("Share your baby's care data with other caregivers using iCloud. Each caregiver signs in with their own Apple ID.")
                 }
 
                 // Language section
@@ -111,17 +122,6 @@ struct SettingsView: View {
                         }
                         showingRestartAlert = true
                     }
-                }
-
-                // CloudKit sharing section
-                Section {
-                    NavigationLink(destination: CloudKitSharingGuideView()) {
-                        Label("CloudKit Sharing", systemImage: "icloud")
-                    }
-                } header: {
-                    Text("Data Sync")
-                } footer: {
-                    Text("Share your baby's care data with other caregivers using iCloud.")
                 }
 
                 // About section
@@ -172,12 +172,40 @@ struct SettingsView: View {
                     }
                 )
             }
-            .sheet(isPresented: $showingShareSheet) {
-                ShareInviteView()
+            .sheet(isPresented: $showingCloudSharing) {
+                if let controller = sharingController {
+                    CloudSharingView(sharingController: controller) {
+                        showingCloudSharing = false
+                    }
+                }
             }
         }
     }
+
+    private func openShareController() {
+        guard let caregiver = currentCaregiver else { return }
+        sharingController = ShareController.shared.makeSharingController(for: caregiver) {
+            showingCloudSharing = false
+        }
+        showingCloudSharing = true
+    }
 }
+
+// MARK: - CloudSharingView
+
+/// Wraps UICloudSharingController for presentation inside a SwiftUI sheet.
+struct CloudSharingView: UIViewControllerRepresentable {
+    let sharingController: UICloudSharingController
+    let onDone: () -> Void
+
+    func makeUIViewController(context: Context) -> UICloudSharingController {
+        sharingController
+    }
+
+    func updateUIViewController(_ uiViewController: UICloudSharingController, context: Context) {}
+}
+
+// MARK: - Edit Name Sheet
 
 struct EditNameSheet: View {
     @Binding var name: String
@@ -208,146 +236,7 @@ struct EditNameSheet: View {
     }
 }
 
-struct ShareInviteView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.pink)
-
-                Text("Invite Caregiver")
-                    .font(.title)
-                    .fontWeight(.bold)
-
-                Text("Share your baby's feeding data with other caregivers using iCloud sharing.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    InstructionRow(number: 1, text: "Enable iCloud in Settings")
-                    InstructionRow(number: 2, text: "Go to CloudKit Sharing")
-                    InstructionRow(number: 3, text: "Create a share link")
-                    InstructionRow(number: 4, text: "Send to other caregivers")
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                Spacer()
-
-                Button(action: { dismiss() }) {
-                    Text("Got It")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.pink)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .padding(.horizontal)
-            }
-            .padding()
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-struct InstructionRow: View {
-    let number: Int
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text("\(number)")
-                .font(.headline)
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(Color.pink)
-                .clipShape(Circle())
-
-            Text(text)
-                .font(.body)
-        }
-    }
-}
-
-struct CloudKitSharingGuideView: View {
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("How CloudKit Sharing Works")
-                        .font(.title2)
-                        .fontWeight(.bold)
-
-                    Text("AryaLog uses iCloud to sync feeding data between all caregivers. This requires an active Apple ID and iCloud account.")
-                        .foregroundStyle(.secondary)
-                }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader(icon: "1.circle.fill", title: "Requirements")
-
-                    BulletPoint(text: "Active Apple ID on all devices")
-                    BulletPoint(text: "iCloud enabled in device Settings")
-                    BulletPoint(text: "AryaLog granted iCloud access")
-                }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader(icon: "2.circle.fill", title: "Creating a Share")
-
-                    Text("The share functionality is built into the app. Data syncs automatically between devices signed into the same iCloud account.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader(icon: "3.circle.fill", title: "Sharing with Others")
-
-                    Text("To share with other caregivers who have different Apple IDs, you'll need to use CloudKit's sharing APIs. This is configured in the ShareController.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader(icon: "info.circle.fill", title: "Note")
-
-                    Text("Full CloudKit sharing requires an Apple Developer account and proper CloudKit container configuration. The current implementation syncs data for the same iCloud account across devices.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding()
-        }
-        .navigationTitle("CloudKit Sharing")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct SectionHeader: View {
-    let icon: String
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .foregroundStyle(.pink)
-            Text(title)
-                .font(.headline)
-        }
-    }
-}
+// MARK: - Supporting Views
 
 struct BulletPoint: View {
     let text: LocalizedStringKey
@@ -361,6 +250,8 @@ struct BulletPoint: View {
         .font(.body)
     }
 }
+
+// MARK: - Export Data View
 
 struct ExportDataView: View {
     @Environment(\.managedObjectContext) private var viewContext

@@ -2,7 +2,7 @@
 //  PersistenceController.swift
 //  AryaLog
 //
-//  Core Data + CloudKit stack
+//  Core Data + CloudKit stack with shared-database support
 //
 
 import CoreData
@@ -46,38 +46,55 @@ struct PersistenceController {
 
     let container: NSPersistentCloudKitContainer
 
+    // MARK: - Init
+
     init(inMemory: Bool = false) {
         container = NSPersistentCloudKitContainer(name: "AryaLog")
 
         if inMemory {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
         } else {
-            // Configure CloudKit
-            guard let description = container.persistentStoreDescriptions.first else {
-                fatalError("Failed to retrieve a persistent store description.")
-            }
+            let storeDirectory = NSPersistentContainer.defaultDirectoryURL()
 
-            // Enable CloudKit sync
-            description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
+            // Private store — your own data, synced via the private CloudKit database
+            let privateStoreURL = storeDirectory.appendingPathComponent("AryaLog.sqlite")
+            let privateDescription = NSPersistentStoreDescription(url: privateStoreURL)
+            let privateOptions = NSPersistentCloudKitContainerOptions(
                 containerIdentifier: "iCloud.com.AryaLog.AryaLog"
             )
+            // privateOptions.databaseScope defaults to .private — no change needed
+            privateDescription.cloudKitContainerOptions = privateOptions
+            privateDescription.setOption(
+                true as NSNumber,
+                forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey
+            )
+            privateDescription.setOption(
+                true as NSNumber,
+                forKey: NSPersistentHistoryTrackingKey
+            )
 
-            // Enable remote change notifications
-            description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+            // Shared store — data shared to you by other iCloud accounts
+            let sharedStoreURL = storeDirectory.appendingPathComponent("AryaLogShared.sqlite")
+            let sharedDescription = NSPersistentStoreDescription(url: sharedStoreURL)
+            let sharedOptions = NSPersistentCloudKitContainerOptions(
+                containerIdentifier: "iCloud.com.AryaLog.AryaLog"
+            )
+            sharedOptions.databaseScope = .shared
+            sharedDescription.cloudKitContainerOptions = sharedOptions
+            sharedDescription.setOption(
+                true as NSNumber,
+                forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey
+            )
+            sharedDescription.setOption(
+                true as NSNumber,
+                forKey: NSPersistentHistoryTrackingKey
+            )
 
-            // Enable persistent history tracking
-            description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+            container.persistentStoreDescriptions = [privateDescription, sharedDescription]
         }
 
-        container.loadPersistentStores { storeDescription, error in
+        container.loadPersistentStores { _, error in
             if let error = error as NSError? {
-                /*
-                 Typical reasons for an error here include:
-                 * The parent directory does not exist, cannot be created, or disallows writing.
-                 * The persistent store is not accessible, due to permissions or data protection.
-                 * The device is out of space.
-                 * The store could not be migrated to the current model version.
-                 */
                 fatalError("Unresolved error \(error), \(error.userInfo)")
             }
         }
@@ -85,11 +102,19 @@ struct PersistenceController {
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 
-        // Pin the viewContext to the current generation token
         do {
             try container.viewContext.setQueryGenerationFrom(.current)
         } catch {
             fatalError("Failed to pin viewContext to the current generation: \(error)")
+        }
+    }
+
+    // MARK: - Shared Store Reference
+
+    /// The persistent store that receives data shared by other iCloud accounts.
+    var sharedPersistentStore: NSPersistentStore? {
+        container.persistentStoreCoordinator.persistentStores.first {
+            $0.url?.lastPathComponent == "AryaLogShared.sqlite"
         }
     }
 
@@ -103,6 +128,37 @@ struct PersistenceController {
             } catch {
                 let nsError = error as NSError
                 print("Unresolved error saving context: \(nsError), \(nsError.userInfo)")
+            }
+        }
+    }
+
+    // MARK: - Sharing Helpers
+
+    /// Returns true if the object has been shared (has an active CKShare).
+    func isShared(object: NSManagedObject) -> Bool {
+        (try? container.fetchShares(matching: [object.objectID]))?[object.objectID] != nil
+    }
+
+    /// Returns the existing CKShare for an object, or nil if not shared.
+    func share(for object: NSManagedObject) -> CKShare? {
+        (try? container.fetchShares(matching: [object.objectID]))?[object.objectID]
+    }
+
+    /// Returns true if the current user is the owner of the share, or the object is unshared.
+    func isOwner(of object: NSManagedObject) -> Bool {
+        guard let share = share(for: object) else { return true }
+        return share.currentUserParticipant?.role == .owner
+    }
+
+    /// Accepts incoming share invitations and stores them in the shared persistent store.
+    func acceptShareInvitations(from metadata: [CKShareMetadata]) {
+        guard let sharedStore = sharedPersistentStore else {
+            print("Shared persistent store not available — cannot accept share.")
+            return
+        }
+        container.acceptShareInvitations(from: metadata, into: sharedStore) { _, error in
+            if let error = error {
+                print("Failed to accept share invitation: \(error)")
             }
         }
     }
