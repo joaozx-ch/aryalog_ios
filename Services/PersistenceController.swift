@@ -151,7 +151,7 @@ struct PersistenceController {
     }
 
     /// Accepts incoming share invitations and stores them in the shared persistent store.
-    func acceptShareInvitations(from metadata: [CKShareMetadata]) {
+    func acceptShareInvitations(from metadata: [CKShare.Metadata]) {
         guard let sharedStore = sharedPersistentStore else {
             print("Shared persistent store not available — cannot accept share.")
             return

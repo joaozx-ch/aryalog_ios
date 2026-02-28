@@ -16,7 +16,7 @@ import CloudKit
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
-        userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShareMetadata
+        userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata
     ) {
         PersistenceController.shared.acceptShareInvitations(from: [cloudKitShareMetadata])
     }

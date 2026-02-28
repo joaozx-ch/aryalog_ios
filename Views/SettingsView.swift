@@ -40,6 +40,7 @@ struct SettingsView: View {
     @State private var showingEditName = false
     @State private var showingRestartAlert = false
     @State private var showingCloudSharing = false
+    @State private var isPreparingShare = false
     @State private var editingCaregiver: Caregiver?
     @State private var newName = ""
     @State private var sharingController: UICloudSharingController?
@@ -99,8 +100,16 @@ struct SettingsView: View {
                     }
 
                     Button(action: openShareController) {
-                        Label("Share with Caregiver", systemImage: "person.badge.plus")
+                        if isPreparingShare {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Share with Caregiver")
+                            }
+                        } else {
+                            Label("Share with Caregiver", systemImage: "person.badge.plus")
+                        }
                     }
+                    .disabled(isPreparingShare)
                 } header: {
                     Text("Caregivers")
                 } footer: {
@@ -184,10 +193,20 @@ struct SettingsView: View {
 
     private func openShareController() {
         guard let caregiver = currentCaregiver else { return }
-        sharingController = ShareController.shared.makeSharingController(for: caregiver) {
-            showingCloudSharing = false
+        isPreparingShare = true
+        Task {
+            defer { isPreparingShare = false }
+            do {
+                sharingController = try await ShareController.shared.makeSharingController(
+                    for: caregiver
+                ) {
+                    showingCloudSharing = false
+                }
+                showingCloudSharing = true
+            } catch {
+                print("Failed to prepare share: \(error)")
+            }
         }
-        showingCloudSharing = true
     }
 }
 

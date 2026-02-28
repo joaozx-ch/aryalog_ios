@@ -11,10 +11,14 @@ import CoreData
 import UIKit
 
 /// Provides UICloudSharingController instances ready to present in a SwiftUI sheet.
-class ShareController: NSObject, ObservableObject {
+class ShareController: NSObject {
     static let shared = ShareController()
 
     private let ckContainer = CKContainer(identifier: "iCloud.com.AryaLog.AryaLog")
+
+    /// Retains the delegate for the lifetime of the active sharing session,
+    /// because UICloudSharingController.delegate is weak.
+    private var activeDelegate: Delegate?
 
     // MARK: - Account Status
 
@@ -29,47 +33,35 @@ class ShareController: NSObject, ObservableObject {
 
     // MARK: - Building the Sharing Controller
 
-    /// Returns a configured UICloudSharingController for the given caregiver.
-    /// If the caregiver is already shared it returns a management controller; otherwise
-    /// it returns a new-share controller that creates the share on demand.
+    /// Creates or fetches the CKShare for the caregiver, then returns a ready-to-present
+    /// UICloudSharingController using the non-deprecated `init(share:container:)`.
     func makeSharingController(
         for caregiver: Caregiver,
         onDone: @escaping () -> Void
-    ) -> UICloudSharingController {
+    ) async throws -> UICloudSharingController {
         let persistentContainer = PersistenceController.shared.container
 
-        // Reuse existing share if one already exists for this caregiver.
+        // Fetch an existing share, or create a new one.
+        let share: CKShare
         if let existingShare = (try? persistentContainer.fetchShares(
             matching: [caregiver.objectID]
         ))?[caregiver.objectID] {
-            let controller = UICloudSharingController(
-                share: existingShare,
-                container: ckContainer
-            )
-            controller.availablePermissions = [.allowReadWrite, .allowPrivate]
-            controller.delegate = Delegate(onDone: onDone)
-            return controller
+            share = existingShare
+        } else {
+            let (_, newShare, _) = try await persistentContainer.share([caregiver], to: nil)
+            newShare[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
+            share = newShare
         }
 
-        // Create a new share via the preparation handler.
-        let controller = UICloudSharingController { [weak self] _, completion in
-            guard self != nil else { return }
-            Task {
-                do {
-                    let (_, share, container) = try await persistentContainer.share(
-                        [caregiver],
-                        to: nil
-                    )
-                    share[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
-                    completion(share, container, nil)
-                } catch {
-                    print("Failed to create CloudKit share: \(error)")
-                    completion(nil, nil, error)
-                }
-            }
-        }
+        let delegate = Delegate(onDone: { [weak self] in
+            self?.activeDelegate = nil
+            onDone()
+        })
+        activeDelegate = delegate
+
+        let controller = UICloudSharingController(share: share, container: ckContainer)
         controller.availablePermissions = [.allowReadWrite, .allowPrivate]
-        controller.delegate = Delegate(onDone: onDone)
+        controller.delegate = delegate
         return controller
     }
 
