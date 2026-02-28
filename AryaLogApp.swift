@@ -7,9 +7,26 @@
 
 import SwiftUI
 import CoreData
+import CloudKit
+
+// MARK: - App Delegate
+
+/// Handles system-level events that cannot be intercepted in SwiftUI,
+/// most importantly accepting incoming CloudKit share invitations.
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShareMetadata
+    ) {
+        PersistenceController.shared.acceptShareInvitations(from: [cloudKitShareMetadata])
+    }
+}
+
+// MARK: - App
 
 @main
 struct AryaLogApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let persistenceController = PersistenceController.shared
 
     init() {
@@ -27,6 +44,8 @@ struct AryaLogApp: App {
     }
 }
 
+// MARK: - Content View
+
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @AppStorage("hasCompletedSetup") private var hasCompletedSetup = false
@@ -40,6 +59,8 @@ struct ContentView: View {
         }
     }
 }
+
+// MARK: - Setup View
 
 struct SetupView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -109,6 +130,8 @@ struct SetupView: View {
         }
     }
 }
+
+// MARK: - Main Tab View
 
 struct MainTabView: View {
     var body: some View {
