@@ -33,8 +33,17 @@ class ShareController: NSObject {
 
     // MARK: - Building the Sharing Controller
 
-    /// Creates or fetches the CKShare for the caregiver, then returns a ready-to-present
-    /// UICloudSharingController using the non-deprecated `init(share:container:)`.
+    /// Returns a UICloudSharingController for the given caregiver.
+    ///
+    /// - For an **existing share** (the caregiver's record already has a CKShare in CloudKit),
+    ///   uses `init(share:container:)` — the share has a server-assigned URL, so this is correct.
+    /// - For a **new share**, uses `init(preparationHandler:)` so UIKit triggers the CloudKit
+    ///   save inside the controller and waits for the server-assigned URL before displaying
+    ///   "Copy Link". This is the only correct approach when using NSPersistentCloudKitContainer,
+    ///   because `share(_:to:)` returns a CKShare before CloudKit responds with a URL, making
+    ///   `init(share:container:)` unusable for freshly created shares (it would produce an empty link).
+    ///   `init(preparationHandler:)` is deprecated in iOS 16 but has no non-deprecated equivalent
+    ///   for this use case; it remains fully functional.
     func makeSharingController(
         for caregiver: Caregiver,
         onDone: @escaping () -> Void
@@ -47,25 +56,40 @@ class ShareController: NSObject {
 
         let persistentContainer = PersistenceController.shared.container
 
-        // Fetch an existing share, or create a new one.
-        let share: CKShare
-        if let existingShare = (try? persistentContainer.fetchShares(
-            matching: [caregiver.objectID]
-        ))?[caregiver.objectID] {
-            share = existingShare
-        } else {
-            let (_, newShare, _) = try await persistentContainer.share([caregiver], to: nil)
-            newShare[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
-            share = newShare
-        }
-
         let delegate = Delegate(onDone: { [weak self] in
             self?.activeDelegate = nil
             onDone()
         })
         activeDelegate = delegate
 
-        let controller = UICloudSharingController(share: share, container: ckContainer)
+        // PATH A: Existing share — already has a server-assigned URL.
+        if let existingShare = (try? persistentContainer.fetchShares(
+            matching: [caregiver.objectID]
+        ))?[caregiver.objectID] {
+            let controller = UICloudSharingController(share: existingShare, container: ckContainer)
+            controller.availablePermissions = [.allowReadWrite, .allowPrivate]
+            controller.delegate = delegate
+            return controller
+        }
+
+        // PATH B: New share — use the preparation handler so UIKit waits for the URL.
+        let controller = UICloudSharingController { [ckContainer] preparationCompletionHandler in
+            Task {
+                do {
+                    let (_, newShare, _) = try await persistentContainer.share(
+                        [caregiver], to: nil
+                    )
+                    newShare[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
+                    await MainActor.run {
+                        preparationCompletionHandler(newShare, ckContainer, nil)
+                    }
+                } catch {
+                    await MainActor.run {
+                        preparationCompletionHandler(nil, ckContainer, error)
+                    }
+                }
+            }
+        }
         controller.availablePermissions = [.allowReadWrite, .allowPrivate]
         controller.delegate = delegate
         return controller
