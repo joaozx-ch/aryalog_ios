@@ -84,26 +84,54 @@ class ShareController: NSObject {
 
         // PATH B: New share, or an existing share whose URL is still nil — use the
         // preparation handler so UIKit waits for CloudKit to assign the URL before
-        // showing "Copy Link". Always pass nil here: passing a broken CKShare (url == nil)
-        // to persistentContainer.share(_:to:) causes the operation to stall indefinitely.
-        let controller = UICloudSharingController { [ckContainer] _, preparationCompletionHandler in
+        // showing "Copy Link".
+        //
+        // IMPORTANT: If a previous share attempt left a local CKShare with url == nil,
+        // calling share(_:to:nil) again would throw because Apple's API forbids passing
+        // objects that are already associated with a share alongside a nil share parameter.
+        // In that case we skip share(_:to:) and save the existing CKShare directly to
+        // CloudKit to obtain the server-assigned URL.
+        let controller = UICloudSharingController { [ckContainer, existingShare] _, preparationCompletionHandler in
             Task {
                 do {
-                    let (_, share, _) = try await persistentContainer.share(
-                        [caregiver], to: nil
-                    )
-                    share[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
+                    let shareToSave: CKShare
+                    if let existingShare {
+                        // The caregiver already has a local CKShare (url == nil from a
+                        // previous failed attempt). Calling share(_:to:nil) again would
+                        // fail. Save the existing share record directly to CloudKit instead.
+                        existingShare[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
+                        shareToSave = existingShare
+                    } else {
+                        // No existing share — create a fresh one.
+                        // NSPersistentCloudKitContainer.share(_:to:) creates the CKShare
+                        // locally and schedules a background CloudKit sync, but returns
+                        // before the server responds — so share.url is nil here. We save
+                        // directly to CloudKit to force a round-trip and get the URL.
+                        let (_, newShare, _) = try await persistentContainer.share(
+                            [caregiver], to: nil
+                        )
+                        newShare[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
+                        shareToSave = newShare
+                    }
 
-                    // NSPersistentCloudKitContainer.share(_:to:) creates the CKShare locally
-                    // and schedules a background CloudKit sync, but returns before the server
-                    // responds — so share.url is nil at this point. We must save the share
-                    // directly to CloudKit to force a synchronous round-trip and receive the
-                    // server-assigned URL, which UICloudSharingController needs to invite people.
-                    let savedRecord = try await ckContainer.privateCloudDatabase.save(share)
-                    let shareWithURL = (savedRecord as? CKShare) ?? share
+                    let savedRecord = try await ckContainer.privateCloudDatabase.save(shareToSave)
+                    let shareWithURL = (savedRecord as? CKShare) ?? shareToSave
 
                     await MainActor.run {
                         preparationCompletionHandler(shareWithURL, ckContainer, nil)
+                    }
+                } catch let ckError as CKError where ckError.code == .serverRecordChanged {
+                    // The background CloudKit sync raced the explicit save and already
+                    // pushed the share. Use the server record, which has the URL.
+                    if let serverRecord = ckError.serverRecord as? CKShare, serverRecord.url != nil {
+                        await MainActor.run {
+                            preparationCompletionHandler(serverRecord, ckContainer, nil)
+                        }
+                    } else {
+                        print("Share preparation failed (serverRecordChanged, no URL): \(ckError)")
+                        await MainActor.run {
+                            preparationCompletionHandler(nil, ckContainer, ckError)
+                        }
                     }
                 } catch {
                     print("Share preparation failed: \(error)")
