@@ -39,12 +39,10 @@ struct SettingsView: View {
     @AppStorage("selectedLanguage") private var selectedLanguage: String = ""
     @State private var showingEditName = false
     @State private var showingRestartAlert = false
-    @State private var showingCloudSharing = false
     @State private var isPreparingShare = false
     @State private var shareError: String?
     @State private var editingCaregiver: Caregiver?
     @State private var newName = ""
-    @State private var sharingController: UICloudSharingController?
 
     var currentCaregiver: Caregiver? {
         caregivers.first { $0.isCurrentUser }
@@ -190,13 +188,6 @@ struct SettingsView: View {
                     }
                 )
             }
-            .sheet(isPresented: $showingCloudSharing) {
-                if let controller = sharingController {
-                    CloudSharingView(sharingController: controller) {
-                        showingCloudSharing = false
-                    }
-                }
-            }
         }
     }
 
@@ -206,10 +197,11 @@ struct SettingsView: View {
         Task {
             defer { isPreparingShare = false }
             do {
-                sharingController = try await ShareController.shared.makeSharingController(
+                let controller = try await ShareController.shared.makeSharingController(
                     for: caregiver
                 ) { error in
-                    showingCloudSharing = false
+                    // UIKit automatically dismisses UICloudSharingController when any
+                    // delegate callback fires — we only need to surface errors here.
                     if let error = error {
                         if let ckError = error as? CKError {
                             shareError = "\(error.localizedDescription)\n\n(CKError \(ckError.code.rawValue))"
@@ -218,9 +210,19 @@ struct SettingsView: View {
                         }
                     }
                 }
-                showingCloudSharing = true
+                // UICloudSharingController must be presented directly by a UIViewController.
+                // Embedding it in a SwiftUI sheet via UIViewControllerRepresentable makes it
+                // a child view controller rather than a modal presentation, which prevents
+                // the preparation handler from being called (causing a permanent loading state).
+                guard
+                    let scene = UIApplication.shared.connectedScenes
+                        .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+                    let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+                else { return }
+                var top = root
+                while let presented = top.presentedViewController { top = presented }
+                top.present(controller, animated: true)
             } catch {
-                // Include CKError code in the message to help diagnose CloudKit issues.
                 if let ckError = error as? CKError {
                     shareError = "\(error.localizedDescription)\n\n(CKError \(ckError.code.rawValue))"
                 } else {
@@ -230,20 +232,6 @@ struct SettingsView: View {
             }
         }
     }
-}
-
-// MARK: - CloudSharingView
-
-/// Wraps UICloudSharingController for presentation inside a SwiftUI sheet.
-struct CloudSharingView: UIViewControllerRepresentable {
-    let sharingController: UICloudSharingController
-    let onDone: () -> Void
-
-    func makeUIViewController(context: Context) -> UICloudSharingController {
-        sharingController
-    }
-
-    func updateUIViewController(_ uiViewController: UICloudSharingController, context: Context) {}
 }
 
 // MARK: - Edit Name Sheet
