@@ -93,8 +93,17 @@ class ShareController: NSObject {
                         [caregiver], to: nil
                     )
                     share[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
+
+                    // NSPersistentCloudKitContainer.share(_:to:) creates the CKShare locally
+                    // and schedules a background CloudKit sync, but returns before the server
+                    // responds — so share.url is nil at this point. We must save the share
+                    // directly to CloudKit to force a synchronous round-trip and receive the
+                    // server-assigned URL, which UICloudSharingController needs to invite people.
+                    let savedRecord = try await ckContainer.privateCloudDatabase.save(share)
+                    let shareWithURL = (savedRecord as? CKShare) ?? share
+
                     await MainActor.run {
-                        preparationCompletionHandler(share, ckContainer, nil)
+                        preparationCompletionHandler(shareWithURL, ckContainer, nil)
                     }
                 } catch {
                     print("Share preparation failed: \(error)")
