@@ -46,7 +46,7 @@ class ShareController: NSObject {
     ///   for this use case; it remains fully functional.
     func makeSharingController(
         for caregiver: Caregiver,
-        onDone: @escaping () -> Void
+        onDone: @escaping (Error?) -> Void
     ) async throws -> UICloudSharingController {
         // Verify iCloud is available before doing any CloudKit work.
         let accountStatus = try await ckContainer.accountStatus()
@@ -56,34 +56,48 @@ class ShareController: NSObject {
 
         let persistentContainer = PersistenceController.shared.container
 
-        let delegate = Delegate(onDone: { [weak self] in
-            self?.activeDelegate = nil
-            onDone()
-        })
+        let delegate = Delegate(
+            onDone: { [weak self] in
+                self?.activeDelegate = nil
+                onDone(nil)
+            },
+            onError: { [weak self] error in
+                self?.activeDelegate = nil
+                onDone(error)
+            }
+        )
         activeDelegate = delegate
 
-        // PATH A: Existing share — already has a server-assigned URL.
-        if let existingShare = (try? persistentContainer.fetchShares(
+        // PATH A: Existing share that already has a server-assigned URL — use the
+        // non-deprecated init. Guard on url != nil: a previous failed attempt may have
+        // left a CKShare in Core Data with no URL, which would produce an empty link.
+        let existingShare = (try? persistentContainer.fetchShares(
             matching: [caregiver.objectID]
-        ))?[caregiver.objectID] {
+        ))?[caregiver.objectID]
+
+        if let existingShare, existingShare.url != nil {
             let controller = UICloudSharingController(share: existingShare, container: ckContainer)
             controller.availablePermissions = [.allowReadWrite, .allowPrivate]
             controller.delegate = delegate
             return controller
         }
 
-        // PATH B: New share — use the preparation handler so UIKit waits for the URL.
-        let controller = UICloudSharingController { [ckContainer] preparationCompletionHandler in
+        // PATH B: New share, or an existing share whose URL is still nil — use the
+        // preparation handler so UIKit waits for CloudKit to assign the URL before
+        // showing "Copy Link". Passing `existingShare` (which may be nil) lets
+        // NSPersistentCloudKitContainer re-save a broken share rather than duplicate it.
+        let controller = UICloudSharingController { [ckContainer] _, preparationCompletionHandler in
             Task {
                 do {
-                    let (_, newShare, _) = try await persistentContainer.share(
-                        [caregiver], to: nil
+                    let (_, share, _) = try await persistentContainer.share(
+                        [caregiver], to: existingShare
                     )
-                    newShare[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
+                    share[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
                     await MainActor.run {
-                        preparationCompletionHandler(newShare, ckContainer, nil)
+                        preparationCompletionHandler(share, ckContainer, nil)
                     }
                 } catch {
+                    print("Share preparation failed: \(error)")
                     await MainActor.run {
                         preparationCompletionHandler(nil, ckContainer, error)
                     }
@@ -122,9 +136,11 @@ class ShareController: NSObject {
     /// Thin UICloudSharingControllerDelegate that calls back when the user is done.
     class Delegate: NSObject, UICloudSharingControllerDelegate {
         private let onDone: () -> Void
+        private let onError: (Error) -> Void
 
-        init(onDone: @escaping () -> Void) {
+        init(onDone: @escaping () -> Void, onError: @escaping (Error) -> Void) {
             self.onDone = onDone
+            self.onError = onError
         }
 
         func itemTitle(for csc: UICloudSharingController) -> String? {
@@ -136,7 +152,7 @@ class ShareController: NSObject {
             failedToSaveShareWithError error: Error
         ) {
             print("Failed to save share: \(error)")
-            onDone()
+            onError(error)
         }
 
         func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) {

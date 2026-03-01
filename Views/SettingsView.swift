@@ -208,8 +208,15 @@ struct SettingsView: View {
             do {
                 sharingController = try await ShareController.shared.makeSharingController(
                     for: caregiver
-                ) {
+                ) { error in
                     showingCloudSharing = false
+                    if let error = error {
+                        if let ckError = error as? CKError {
+                            shareError = "\(error.localizedDescription)\n\n(CKError \(ckError.code.rawValue))"
+                        } else {
+                            shareError = error.localizedDescription
+                        }
+                    }
                 }
                 showingCloudSharing = true
             } catch {
