@@ -84,13 +84,13 @@ class ShareController: NSObject {
 
         // PATH B: New share, or an existing share whose URL is still nil — use the
         // preparation handler so UIKit waits for CloudKit to assign the URL before
-        // showing "Copy Link". Passing `existingShare` (which may be nil) lets
-        // NSPersistentCloudKitContainer re-save a broken share rather than duplicate it.
+        // showing "Copy Link". Always pass nil here: passing a broken CKShare (url == nil)
+        // to persistentContainer.share(_:to:) causes the operation to stall indefinitely.
         let controller = UICloudSharingController { [ckContainer] _, preparationCompletionHandler in
             Task {
                 do {
                     let (_, share, _) = try await persistentContainer.share(
-                        [caregiver], to: existingShare
+                        [caregiver], to: nil
                     )
                     share[CKShare.SystemFieldKey.title] = "AryaLog Baby Care" as CKRecordValue
                     await MainActor.run {
